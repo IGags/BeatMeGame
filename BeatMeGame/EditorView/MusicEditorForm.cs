@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,7 +22,9 @@ namespace BeatMeGame.EditorView
         private List<BeatButton> beatButtons;
         private Panel beatStatusPanel;
         private Panel FFTCoefficientPanel;
-        private FFTVertex flexibleVertex;
+        private Panel beatCoefficientPanel;
+        private FFTVertex flexibleVertexFFT;
+        private BPMVertex flexibleBPMVertex;
         public MusicEditorForm(Form parent, LevelSave save)
         {
             MdiParent = parent;
@@ -92,6 +95,11 @@ namespace BeatMeGame.EditorView
                 BackColor = Color.Gray
             };
 
+            beatCoefficientPanel = new Panel()
+            {
+                BackColor = Color.Gray
+            };
+
             var decreaseBeatSecondButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
@@ -125,9 +133,24 @@ namespace BeatMeGame.EditorView
                 trackPositionTrackBar.Value = model.CurrentSecond;
             };
 
+            trackPositionTrackBar.Scroll += (sender, args) =>
+            {
+                model.GetSecondByTime(trackPositionTrackBar.Value);
+                VisualizeModel();
+            };
+
             trackPositionTrackBar.ValueChanged += (sender, args) =>
             {
                 trackPositionLabel.Text = (new TimeSpan(0, 0, model.CurrentSecond)).ToString();
+            };
+
+            analyzeTypeButton.Click += (sender, args) =>
+            {
+                model.ChangeAnalyzeType();
+                InitializeAnalyzeState();
+                trackPositionTrackBar.Value = 0;
+                analyzeTypeButton.Text = @"Тип анализа ";
+                analyzeTypeButton.Text += model.Save.Manifest.DetectionType == BeatDetectionType.FFT ? "FFT" : "BPM";
             };
 
             Load += (sender, args) =>
@@ -162,6 +185,8 @@ namespace BeatMeGame.EditorView
                         decreaseBeatSecondButton.Location.Y);
                 FFTCoefficientPanel.Size = new Size(ClientSize.Width / 6, spectrogramPanel.Height);
                 FFTCoefficientPanel.Location = new Point(spectrogramPanel.Right + marginRange, spectrogramPanel.Top);
+                beatCoefficientPanel.Size = FFTCoefficientPanel.Size;
+                beatCoefficientPanel.Location = FFTCoefficientPanel.Location;
             };
 
             FFTCoefficientPanel.Resize += (sender, args) =>
@@ -169,10 +194,18 @@ namespace BeatMeGame.EditorView
                 InitFFTPanel();
             };
 
+            beatCoefficientPanel.Resize += (sender, args) =>
+            {
+                InitializeBPMCoefficientPanel();
+            };
+
             beatStatusPanel.Resize += (sender, args) =>
             {
                 InitializeBeatPanel();
+                InitializeAnalyzeState();
             };
+
+
 
             Controls.Add(trackPositionTrackBar);
             Controls.Add(trackPositionLabel);
@@ -185,12 +218,33 @@ namespace BeatMeGame.EditorView
             Controls.Add(decreaseBeatSecondButton);
             Controls.Add(increaseBeatSecondButton);
             Controls.Add(FFTCoefficientPanel);
+            Controls.Add(beatCoefficientPanel);
+        }
+
+        private void InitializeAnalyzeState()
+        {
+            if (model.Save.Manifest.DetectionType == BeatDetectionType.FFT)
+            {
+                beatCoefficientPanel.Hide();
+                FFTCoefficientPanel.Show();
+            }
+            else
+            {
+                FFTCoefficientPanel.Hide();
+                beatCoefficientPanel.Show();
+            }
+            VisualizeModel();
         }
 
         private void InitializeBeatPanel()
         {
             var buttonsCount = model.FramesPerSecond;
-            model.UnpackVertexes(model.CurrentSecond, model.FramesPerSecond, model.FFTUnpacker, PackingDirection.Forward);
+            if (model.Save.Manifest.DetectionType == BeatDetectionType.FFT)
+                model.UnpackVertexes(model.CurrentSecond, model.FramesPerSecond, model.FFTUnpacker,
+                    PackingDirection.Forward);
+            else
+                model.UnpackVertexes(model.CurrentSecond, model.FramesPerSecond, model.BPMUnpacker,
+                    PackingDirection.Forward);
             beatButtons = new List<BeatButton>();
             for (int i = 0; i < buttonsCount; i++)
             {
@@ -202,7 +256,8 @@ namespace BeatMeGame.EditorView
                     Size = new Size(beatStatusPanel.ClientSize.Width / buttonsCount,
                         beatStatusPanel.ClientSize.Height),
                     Location =
-                    new Point(beatStatusPanel.Location.X + i * beatStatusPanel.ClientSize.Width / buttonsCount, beatStatusPanel.Location.Y)
+                    new Point(beatStatusPanel.Location.X + i * beatStatusPanel.ClientSize.Width / buttonsCount, 
+                        beatStatusPanel.Location.Y)
                 });
                 beatStatusPanel.Controls.Add(beatButtons[i]);
 
@@ -255,7 +310,7 @@ namespace BeatMeGame.EditorView
             var minimumLabel = new Label()
             {
                 TextAlign = ContentAlignment.MiddleCenter,
-                Text = "0",
+                Text = @"0",
                 Location = new Point(lowFrequencySlider.Left, lowFrequencySlider.Bottom),
                 Size = labelSize
             };
@@ -303,7 +358,7 @@ namespace BeatMeGame.EditorView
             var maxThreshold = new Label()
             {
                 TextAlign = ContentAlignment.MiddleCenter,
-                Text = "3.0",
+                Text = @"3.0",
                 Location = new Point(thresholdValueSlider.Left, thresholdValueSlider.Top - labelSize.Height),
                 Size = labelSize
             };
@@ -311,7 +366,7 @@ namespace BeatMeGame.EditorView
             var minThreshold = new Label()
             {
                 TextAlign = ContentAlignment.MiddleCenter,
-                Text = "-3.0",
+                Text = @"-3.0",
                 Location = new Point(thresholdValueSlider.Left, thresholdValueSlider.Bottom),
                 Size = labelSize
             };
@@ -319,18 +374,18 @@ namespace BeatMeGame.EditorView
             var thresholdValue = new Label()
             {
                 TextAlign = ContentAlignment.MiddleCenter,
-                Text = "0.0",
+                Text = @"0.0",
                 Location = new Point(thresholdValueSlider.Left, minThreshold.Bottom),
                 Size = labelSize
             };
 
-            flexibleVertex = new FFTVertex(TimeSpan.Zero, VertexType.FFT, highFrequencySlider.Value,
+            flexibleVertexFFT = new FFTVertex(TimeSpan.Zero, VertexType.FFT, highFrequencySlider.Value,
                 lowFrequencySlider.Value, (double)thresholdValueSlider.Value / 100);
 
             highFrequencySlider.ValueChanged += (sender, args) =>
             {
                 lowFrequencySlider.Maximum = highFrequencySlider.Value;
-                flexibleVertex.TopFrequency = highFrequencySlider.Value;
+                flexibleVertexFFT.TopFrequency = highFrequencySlider.Value;
                 var stringValue = highFrequencySlider.Value.ToString();
                 bottomMaximumLabel.Text = stringValue;
                 highBorder.Text = stringValue;
@@ -339,7 +394,7 @@ namespace BeatMeGame.EditorView
             lowFrequencySlider.ValueChanged += (sender, args) =>
             {
                 highFrequencySlider.Minimum = lowFrequencySlider.Value;
-                flexibleVertex.BotFrequency = lowFrequencySlider.Value;
+                flexibleVertexFFT.BotFrequency = lowFrequencySlider.Value;
                 var stringValue = lowFrequencySlider.Value.ToString();
                 lowBorder.Text = stringValue;
                 topMinimumLabel.Text = stringValue;
@@ -347,8 +402,8 @@ namespace BeatMeGame.EditorView
 
             thresholdValueSlider.ValueChanged += (sender, args) =>
             {
-                flexibleVertex.ThresholdValue = (double)thresholdValueSlider.Value / 100;
-                thresholdValue.Text = ((double)thresholdValueSlider.Value / 100).ToString();
+                flexibleVertexFFT.ThresholdValue = (double)thresholdValueSlider.Value / 100;
+                thresholdValue.Text = ((double)thresholdValueSlider.Value / 100).ToString(CultureInfo.InvariantCulture);
             };
 
             FFTCoefficientPanel.Controls.Add(highFrequencySlider);
@@ -365,6 +420,61 @@ namespace BeatMeGame.EditorView
             FFTCoefficientPanel.Controls.Add(thresholdValue);
         }
 
+        private void InitializeBPMCoefficientPanel()
+        {
+            var bpmTrackBar = new TrackBar()
+            {
+                Maximum = 7000,
+                Value = 0,
+                Minimum = 0,
+                Orientation = Orientation.Vertical,
+                TickStyle = TickStyle.None,
+                Location = new Point(beatCoefficientPanel.ClientSize.Width / 2, 
+                    beatCoefficientPanel.ClientSize.Height / 8),
+                Size = new Size(Size.Width, 3 * beatCoefficientPanel.ClientSize.Height / 4)
+            };
+
+            var labelSize = new Size(bpmTrackBar.Width, beatCoefficientPanel.ClientSize.Height / 20);
+
+            var maxValueLabel = new Label()
+            {
+                Text = @"700",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = labelSize,
+                Location = new Point(bpmTrackBar.Left, bpmTrackBar.Top - Size.Height)
+            };
+
+            var minValueLabel = new Label()
+            {
+                Text = @"0",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = labelSize,
+                Location = new Point(bpmTrackBar.Left, bpmTrackBar.Bottom)
+            };
+
+            var currentValueLabel = new Label()
+            {
+                Text = @"0",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = labelSize,
+                Location = new Point(minValueLabel.Left, minValueLabel.Bottom)
+            };
+
+            flexibleBPMVertex = new BPMVertex(TimeSpan.MaxValue, VertexType.BPM, 0.0);
+
+            bpmTrackBar.ValueChanged += (sender, args) =>
+            {
+                var newValue = (double)bpmTrackBar.Value / 10;
+                flexibleBPMVertex.BPM = newValue;
+                currentValueLabel.Text = newValue.ToString(CultureInfo.InvariantCulture);
+            };
+
+            beatCoefficientPanel.Controls.Add(maxValueLabel);
+            beatCoefficientPanel.Controls.Add(minValueLabel);
+            beatCoefficientPanel.Controls.Add(currentValueLabel);
+            beatCoefficientPanel.Controls.Add(bpmTrackBar);
+        }
+
         private void BindButtons(BeatButton button)
         {
             if (button.Vertex.Type == VertexType.None)
@@ -375,12 +485,12 @@ namespace BeatMeGame.EditorView
                 {
                     case VertexType.FFT:
                     {
-                        var updatedVertex = new FFTVertex(
+                        var updatedFFTVertex = new FFTVertex(
                             new TimeSpan(0, 0, 0, model.CurrentSecond, model.Position2Millisecond(button.Number)),
-                            VertexType.FFT, flexibleVertex.TopFrequency, flexibleVertex.BotFrequency,
-                            flexibleVertex.ThresholdValue);
-                        button.Vertex = updatedVertex;
-                        model.AddFFTVertex(button.Number, updatedVertex);
+                            VertexType.FFT, flexibleVertexFFT.TopFrequency, flexibleVertexFFT.BotFrequency,
+                            flexibleVertexFFT.ThresholdValue);
+                        button.Vertex = updatedFFTVertex;
+                        model.AddFFTVertex(button.Number, updatedFFTVertex);
                         VisualizeModel();
                         break;
                     }
@@ -394,7 +504,15 @@ namespace BeatMeGame.EditorView
                         break;
                     }
                     case VertexType.BPM:
+                    {
+                        var updatedBPMVertex = new BPMVertex(
+                            new TimeSpan(0, 0, 0, model.CurrentSecond, model.Position2Millisecond(button.Number)),
+                            VertexType.BPM, flexibleBPMVertex.BPM);
+                        button.Vertex = updatedBPMVertex;
+                        model.AddBPMVertex(button.Number, updatedBPMVertex);
+                        VisualizeModel();
                         break;
+                    }
                 }
                 return;
             }
@@ -406,7 +524,7 @@ namespace BeatMeGame.EditorView
                 return;
             }
 
-            if (button.Vertex.Type == VertexType.AdditionalFFT)
+            if (button.Vertex.Type == VertexType.AdditionalFFT || button.Vertex.Type == VertexType.AdditionalBPM)
             {
                 model.AddMonoVertex(button.Number,
                     new BeatVertex(
@@ -475,6 +593,18 @@ namespace BeatMeGame.EditorView
                 {
                     beatButtons[index].BackColor = Color.DarkRed;
                     beatButtons[index].Text = "Скрытая";
+                    break;
+                }
+                case VertexType.BPM:
+                {
+                    beatButtons[index].BackColor = Color.Blue;
+                    beatButtons[index].Text = "BPM";
+                    break;
+                }
+                case VertexType.AdditionalBPM:
+                {
+                    beatButtons[index].BackColor = Color.DarkBlue;
+                    beatButtons[index].Text = "Цепной BPM";
                     break;
                 }
                 default:

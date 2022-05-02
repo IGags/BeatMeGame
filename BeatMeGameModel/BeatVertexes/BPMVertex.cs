@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BeatMeGameModel.BeatVertexes
 {
-    class BPMVertex : BeatVertex
+    public class BPMVertex : BeatVertex
     {
         public double BPM { get; set; }
 
