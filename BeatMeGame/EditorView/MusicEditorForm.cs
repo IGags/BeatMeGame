@@ -240,11 +240,9 @@ namespace BeatMeGame.EditorView
         {
             var buttonsCount = model.FramesPerSecond;
             if (model.Save.Manifest.DetectionType == BeatDetectionType.FFT)
-                model.UnpackVertexes(model.CurrentSecond, model.FramesPerSecond, model.FFTUnpacker,
-                    PackingDirection.Forward);
+                model.UnpackVertices(model.CurrentSecond, PackingDirection.Forward);
             else
-                model.UnpackVertexes(model.CurrentSecond, model.FramesPerSecond, model.BPMUnpacker,
-                    PackingDirection.Forward);
+                model.UnpackVertices(model.CurrentSecond, PackingDirection.Forward);
             beatButtons = new List<BeatButton>();
             for (int i = 0; i < buttonsCount; i++)
             {
@@ -490,7 +488,7 @@ namespace BeatMeGame.EditorView
                             VertexType.FFT, flexibleVertexFFT.TopFrequency, flexibleVertexFFT.BotFrequency,
                             flexibleVertexFFT.ThresholdValue);
                         button.Vertex = updatedFFTVertex;
-                        model.AddFFTVertex(button.Number, updatedFFTVertex);
+                        model.AddChainVertex(button.Number, updatedFFTVertex);
                         VisualizeModel();
                         break;
                     }
@@ -509,7 +507,7 @@ namespace BeatMeGame.EditorView
                             new TimeSpan(0, 0, 0, model.CurrentSecond, model.Position2Millisecond(button.Number)),
                             VertexType.BPM, flexibleBPMVertex.BPM);
                         button.Vertex = updatedBPMVertex;
-                        model.AddBPMVertex(button.Number, updatedBPMVertex);
+                        model.AddChainVertex(button.Number, updatedBPMVertex);
                         VisualizeModel();
                         break;
                     }
@@ -519,7 +517,7 @@ namespace BeatMeGame.EditorView
 
             if (button.Vertex.Type == VertexType.FFT)
             {
-                model.DeleteFFTVertex(button.Number);
+                model.DeleteChainVertex(button.Number);
                 VisualizeModel();
                 return;
             }
@@ -553,6 +551,13 @@ namespace BeatMeGame.EditorView
                     new TimeSpan(0, 0, 0, model.CurrentSecond, model.Position2Millisecond(button.Number)),
                     VertexType.None));
                 VisualizeButton(button.Number);
+                return;
+            }
+
+            if (button.Vertex.Type == VertexType.BPM)
+            {
+                model.DeleteChainVertex(button.Number);
+                VisualizeModel();
                 return;
             }
 

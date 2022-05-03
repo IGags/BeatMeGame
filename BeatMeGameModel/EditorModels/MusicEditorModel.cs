@@ -7,7 +7,7 @@ using SoundEngineLibrary;
 using BeatMeGameModel.BeatVertexes;
 using BeatMeGameModel.IOWorkers;
 
-//ToDo: починить кнопки перехода между страицами сломались сильно!!!
+//ToDo: унифицировать методы работы с цепными анализаторами.
 namespace BeatMeGameModel.EditorModels
 {
     public enum PackingDirection
@@ -18,7 +18,7 @@ namespace BeatMeGameModel.EditorModels
     public class MusicEditorModel
     {
         public SoundEngineTread WorkTread { get; }
-        public LevelSave Save { get; private set; }
+        public LevelSave Save { get; }
         public int CurrentSecond { get; private set; }
         public int FramesPerSecond { get; }
         public BeatVertex[] Vertices { get; private set; }
@@ -35,9 +35,7 @@ namespace BeatMeGameModel.EditorModels
             CurrentSecond = save.Manifest.StartSecond;
         }
 
-        public void UnpackVertexes(int second, int length, 
-            Func<Dictionary<int, BeatVertex>, PackingDirection,BeatVertex[]> unpacker, 
-            PackingDirection direction)
+        public void UnpackVertices(int second, PackingDirection direction)
         {
             var currentActions = new List<(TimeSpan, BeatVertex)>();
             var keysToRemove = new List<TimeSpan>();
@@ -59,12 +57,12 @@ namespace BeatMeGameModel.EditorModels
                 var millisecond = value.Item1.Milliseconds;
                 return (Millisecond2Position(millisecond), value.Item2);
             }).ToDictionary(value => value.Item1, value => value.Item2);
-            Vertices = unpacker(ms, direction);
+            Vertices = UnpackChainVertices(ms, direction);
         }
 
         public int Millisecond2Position(int time)
         {
-            return (time * FramesPerSecond) / 1000;
+            return (int)Math.Round((time * FramesPerSecond) / 1000d);
         }
 
         public int Position2Millisecond(int position)
@@ -72,33 +70,36 @@ namespace BeatMeGameModel.EditorModels
             return (position * 1000) / FramesPerSecond;
         }
 
-        public int BPM2Millisecond(double bpm)
+        public double BPM2Millisecond(double bpm)
         {
+            if(bpm == 0) return Double.PositiveInfinity;
             return (int)(1000 / (bpm / 60));
         }
 
-        public BeatVertex[] FFTUnpacker(Dictionary<int, BeatVertex> vertexList, PackingDirection direction)
+        private BeatVertex[] UnpackChainVertices(Dictionary<int, BeatVertex> vertexList, PackingDirection direction)
         {
             var typeArray = new BeatVertex[FramesPerSecond];
-            bool[] beatArray;
+            var (type, chainType) = GetChainVertexTypes();
+            if (Save.Manifest.DetectionType == BeatDetectionType.FFT)
+            {
+                type = VertexType.FFT;
+                chainType = VertexType.AdditionalFFT;
+            }
             if (direction == PackingDirection.Backward)
             {
-                while (previousVertexStack.Count != 0 && previousVertexStack.Peek().Time.TotalSeconds > CurrentSecond)
-                    previousVertexStack.Pop();
                 if (previousVertexStack.Count != 0)
                 {
-
-                    CurrentSecond = previousVertexStack.Peek().Time.Milliseconds == 0
-                        ? (int)previousVertexStack.Pop().Time.TotalSeconds
-                        : (int)previousVertexStack.Peek().Time.TotalSeconds;
-                    beatArray = GetUpdatedFFTBeat();
+                    if ((int)previousVertexStack.Peek().Time.TotalSeconds != CurrentSecond || previousVertexStack.Peek().Time.Milliseconds == 0)
+                        CurrentVertex = previousVertexStack.Pop();
+                    else
+                    {
+                        previousVertexStack.Pop();
+                        CurrentVertex = previousVertexStack.Count == 0 ? new BeatVertex(TimeSpan.Zero, VertexType.None) : previousVertexStack.Peek();
+                    }
                 }
-                else
-                {
-                    beatArray = new bool[FramesPerSecond];
-                }
+                else CurrentVertex = new BeatVertex(TimeSpan.Zero, VertexType.None);
             }
-            else beatArray = GetUpdatedFFTBeat();
+            var beatArray = GetUpdatedBeat();
             for (int i = 0; i < typeArray.Length; i++)
             {
                 if (beatArray.Length <= i)
@@ -109,14 +110,14 @@ namespace BeatMeGameModel.EditorModels
                     if (vertexList.ContainsKey(i))
                     {
                         typeArray[i] = vertexList[i];
-                        if (vertexList[i].Type != VertexType.FFT) continue;
+                        if (vertexList[i].Type != type) continue;
                         lastVertexPerFrame = CurrentVertex = vertexList[i];
-                        beatArray = GetUpdatedFFTBeat();
+                        beatArray = GetUpdatedBeat();
                     }
 
                     else if (beatArray[i])
                         typeArray[i] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(i)),
-                            VertexType.AdditionalFFT);
+                            chainType);
                     else
                     {
                         typeArray[i] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(i)),
@@ -127,129 +128,50 @@ namespace BeatMeGameModel.EditorModels
             return typeArray;
         }
 
-        public BeatVertex[] BPMUnpacker(Dictionary<int, BeatVertex> vertexList, PackingDirection direction)
-        {
-            var typeArray = new BeatVertex[FramesPerSecond];
-            bool[] beatArray;
-            if (direction == PackingDirection.Backward)
-            {
-                while (previousVertexStack.Count != 0 && previousVertexStack.Peek().Time.TotalSeconds > CurrentSecond)
-                    previousVertexStack.Pop();
-                if (previousVertexStack.Count != 0)
-                {
-
-                    CurrentSecond = previousVertexStack.Peek().Time.Milliseconds == 0
-                        ? (int)previousVertexStack.Pop().Time.TotalSeconds
-                        : (int)previousVertexStack.Peek().Time.TotalSeconds;
-                    beatArray = GetUpdatedBPM();
-                }
-                else
-                {
-                    beatArray = new bool[FramesPerSecond];
-                }
-            }
-            else beatArray = GetUpdatedBPM();
-
-            for (int i = 0; i < typeArray.Length; i++)
-            {
-                if (vertexList.ContainsKey(i))
-                {
-                    typeArray[i] = vertexList[i];
-                    if(vertexList[i].Type != VertexType.BPM)continue;
-                    CurrentVertex = lastVertexPerFrame = vertexList[i];
-                    beatArray = GetUpdatedBPM();
-                }
-
-                else if (beatArray[i])
-                    typeArray[i] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(i)),
-                        VertexType.AdditionalBPM);
-                else
-                {
-                    typeArray[i] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(i)),
-                        VertexType.None);
-                }
-            }
-
-            return typeArray;
-        }
-
         public void ChangeAnalyzeType()
         {
-            if(Save.Manifest.DetectionType == BeatDetectionType.FFT) PackFFTVertexes(Vertices, PackingDirection.Forward);
-            else PackBeatVertices(Vertices, PackingDirection.Forward);
+            PackVertices(Vertices, PackingDirection.Forward);
             (alternativeType, Save.Beat) = (Save.Beat, alternativeType);
             previousVertexStack.Clear();
             CurrentSecond = 0;
-            if (Save.Manifest.DetectionType == BeatDetectionType.FFT)
-            {
-                CurrentVertex = lastVertexPerFrame = new BeatVertex(TimeSpan.Zero, VertexType.None);
-                Save.Manifest.DetectionType = BeatDetectionType.BPM;
-                UnpackVertexes(CurrentSecond, FramesPerSecond, BPMUnpacker, PackingDirection.Forward);
-            }
-            else
-            {
-                CurrentVertex = lastVertexPerFrame = new BeatVertex(TimeSpan.Zero, VertexType.None);
-                Save.Manifest.DetectionType = BeatDetectionType.FFT;
-                UnpackVertexes(CurrentSecond, FramesPerSecond, FFTUnpacker, PackingDirection.Forward);
-            }
+            CurrentVertex = lastVertexPerFrame = new BeatVertex(TimeSpan.Zero, VertexType.None);
+            Save.Manifest.DetectionType = Save.Manifest.DetectionType == BeatDetectionType.FFT 
+                ? BeatDetectionType.BPM 
+                : BeatDetectionType.FFT;
+            UnpackVertices(CurrentSecond, PackingDirection.Forward);
         }
 
-        public void PackFFTVertexes(BeatVertex[] vertices, PackingDirection direction)
+        public void PackVertices(BeatVertex[] vertices, PackingDirection direction)
         {
+            var (type, chainType) = GetChainVertexTypes();
             foreach (var vertex in vertices)
             {
-                if (vertex.Type == VertexType.None || vertex.Type == VertexType.AdditionalFFT) continue;
+                if (vertex.Type == VertexType.None || vertex.Type == chainType) continue;
                 Save.Beat[vertex.Time] = vertex;
-                if (vertex.Type == VertexType.FFT) CurrentVertex = vertex;
+                if (vertex.Type == type) CurrentVertex = vertex;
             }
             lastVertexPerFrame = CurrentVertex;
             if(direction == PackingDirection.Forward)previousVertexStack.Push(lastVertexPerFrame);
         }
 
-        public void AddFFTVertex(int position, FFTVertex updatedVertex)
+        public void AddChainVertex(int position, BeatVertex updatedVertex)
         {
             CurrentVertex = updatedVertex;
-            var beat = GetUpdatedFFTBeat();
+            var beat = GetUpdatedBeat();
+            var (type, chainType) = GetChainVertexTypes();
             if (position != -1) Vertices[position] = updatedVertex;
             for (int i = position + 1; i < FramesPerSecond; i++)
             {
-                if(Vertices[i].Type == VertexType.FFT) return;
+                if(Vertices[i].Type == type) return;
                 if (beat.Length <= i)
                     Vertices[i] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(i)),
                         VertexType.None);
                 else if(Vertices[i].Type == VertexType.Artificial) continue;
                 else if (beat[i])
                 {
-                    if(Vertices[i].Type == VertexType.AdditionalFFT) continue;
+                    if(Vertices[i].Type == chainType) continue;
                     Vertices[i] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(i)),
-                        VertexType.AdditionalFFT);
-                }
-                else
-                {
-                    Vertices[i] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(position)),
-                        VertexType.None);
-                }
-            }
-            ClearDeletionVertexes();
-        }
-
-        public void AddBPMVertex(int position, BPMVertex updatedVertex)
-        {
-            CurrentVertex = updatedVertex;
-            var beat = GetUpdatedBPM();
-            if (position != -1) Vertices[position] = updatedVertex;
-            for (int i = position + 1; i < FramesPerSecond; i++)
-            {
-                if (Vertices[i].Type == VertexType.BPM) return;
-                if (beat.Length <= i)
-                    Vertices[i] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(i)),
-                        VertexType.None);
-                else if (Vertices[i].Type == VertexType.Artificial) continue;
-                else if (beat[i])
-                {
-                    if (Vertices[i].Type == VertexType.AdditionalBPM) continue;
-                    Vertices[i] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(i)),
-                        VertexType.AdditionalBPM);
+                        chainType);
                 }
                 else
                 {
@@ -262,7 +184,7 @@ namespace BeatMeGameModel.EditorModels
 
         public void AddMonoVertex(int position, BeatVertex vertex)
         {
-            var beat = GetUpdatedFFTBeat();
+            var beat = GetUpdatedBeat();
             if (position < beat.Length)
             {
                 Vertices[position] = vertex;
@@ -270,27 +192,15 @@ namespace BeatMeGameModel.EditorModels
 
         }
 
-        public void PackBeatVertices(BeatVertex[] vertices, PackingDirection direction)
+        public void DeleteChainVertex(int position)
         {
-            foreach (var vertex in Vertices)
-            {
-                if(vertex.Type == VertexType.AdditionalBPM || vertex.Type == VertexType.None) continue;
-                Save.Beat[vertex.Time] = vertex;
-                if (vertex.Type == VertexType.BPM) CurrentVertex = vertex;
-            }
-
-            lastVertexPerFrame = CurrentVertex;
-            if(direction == PackingDirection.Forward) previousVertexStack.Push(lastVertexPerFrame);
-        }
-
-        public void DeleteFFTVertex(int position)
-        {
+            var(type, chainType) = GetChainVertexTypes();
             var prevFFTPos = -1;
             Vertices[position] = new BeatVertex(new TimeSpan(0, 0, 0, CurrentSecond, Position2Millisecond(position)),
                 VertexType.None);
             for (int i = position - 1; i >= 0; i--)
             {
-                if (Vertices[i].Type != VertexType.FFT) continue;
+                if (Vertices[i].Type != type) continue;
                 prevFFTPos = i;
                 break;
             }
@@ -301,7 +211,7 @@ namespace BeatMeGameModel.EditorModels
                 {
                     for (int i = 0; i < Vertices.Length; i++)
                     {
-                        if (Vertices[i].Type == VertexType.FFT)
+                        if (Vertices[i].Type == type)
                         {
                             CurrentVertex = Vertices[i];
                             break;
@@ -320,43 +230,25 @@ namespace BeatMeGameModel.EditorModels
                         if(i + 1 == Vertices.Length) ClearDeletionVertexes();
                     }
                 }
-                else AddFFTVertex(-1, (FFTVertex)previousVertexStack.Peek());
+                else AddChainVertex(-1, previousVertexStack.Peek());
             }
-            else AddFFTVertex(prevFFTPos, (FFTVertex)Vertices[prevFFTPos]);
+            else AddChainVertex(prevFFTPos, Vertices[prevFFTPos]);
         }
 
         public void GetNextSecond()
         {
             if((int)WorkTread.MaxSongDuration.TotalSeconds == CurrentSecond) return;
             CurrentSecond++;
-            switch (Save.Manifest.DetectionType)
-            {
-                case BeatDetectionType.FFT:
-                    PackFFTVertexes(Vertices, PackingDirection.Forward);
-                    UnpackVertexes(CurrentSecond, FramesPerSecond, FFTUnpacker, PackingDirection.Forward);
-                    break;
-                case BeatDetectionType.BPM:
-                    PackBeatVertices(Vertices, PackingDirection.Forward);
-                    UnpackVertexes(CurrentSecond, FramesPerSecond, BPMUnpacker, PackingDirection.Forward);
-                    break;
-            }
+            PackVertices(Vertices, PackingDirection.Forward);
+            UnpackVertices(CurrentSecond, PackingDirection.Forward);
         }
 
         public void GetPreviousSecond()
         {
             if(CurrentSecond == 0) return;
             CurrentSecond--;
-            switch (Save.Manifest.DetectionType)
-            {
-                case BeatDetectionType.FFT:
-                    PackFFTVertexes(Vertices, PackingDirection.Backward);
-                    UnpackVertexes(CurrentSecond, FramesPerSecond, FFTUnpacker, PackingDirection.Backward);
-                    break;
-                case BeatDetectionType.BPM:
-                    PackBeatVertices(Vertices, PackingDirection.Backward);
-                    UnpackVertexes(CurrentSecond, FramesPerSecond, BPMUnpacker, PackingDirection.Backward);
-                    break;
-            }
+            PackVertices(Vertices, PackingDirection.Backward);
+            UnpackVertices(CurrentSecond, PackingDirection.Backward);
         }
 
         public void GetSecondByTime(int time)
@@ -373,18 +265,9 @@ namespace BeatMeGameModel.EditorModels
             else
             {
                 CurrentSecond = 0;
-                if (Save.Manifest.DetectionType == BeatDetectionType.FFT)
-                {
-                    PackFFTVertexes(Vertices, PackingDirection.Backward);
-                    previousVertexStack.Clear();
-                    UnpackVertexes(CurrentSecond, FramesPerSecond, FFTUnpacker, PackingDirection.Forward);
-                }
-                else
-                {
-                    PackBeatVertices(Vertices, PackingDirection.Backward);
-                    previousVertexStack.Clear();
-                    UnpackVertexes(CurrentSecond, FramesPerSecond, BPMUnpacker, PackingDirection.Forward);
-                }
+                PackVertices(Vertices, PackingDirection.Backward);
+                previousVertexStack.Clear();
+                UnpackVertices(CurrentSecond, PackingDirection.Forward);
                 while (CurrentSecond != time)
                 {
                     GetNextSecond();
@@ -423,6 +306,20 @@ namespace BeatMeGameModel.EditorModels
             }
         }
 
+        private (VertexType, VertexType) GetChainVertexTypes()
+        {
+            return Save.Manifest.DetectionType == BeatDetectionType.FFT
+                ? (VertexType.FFT, VertexType.AdditionalFFT)
+                : (VertexType.BPM, VertexType.AdditionalBPM);
+        }
+
+        private bool[] GetUpdatedBeat()
+        {
+            return Save.Manifest.DetectionType == BeatDetectionType.FFT 
+                ? GetUpdatedFFTBeat() 
+                : GetUpdatedBPMBeat();
+        }
+
         private bool[] GetUpdatedFFTBeat()
         {
             if (CurrentVertex.Type == VertexType.None)
@@ -434,19 +331,21 @@ namespace BeatMeGameModel.EditorModels
             return WorkTread.TrackFFT.GetBeatSecond(new TimeSpan(0, 0, 0, CurrentSecond)).ToArray();
         }
 
-        private bool[] GetUpdatedBPM()
+        private bool[] GetUpdatedBPMBeat()
         {
             if (CurrentVertex.Type == VertexType.None)
                 return new bool[WorkTread.TrackFFT.GetBeatSecond(new TimeSpan(0, 0, 0, CurrentSecond)).Count];
             var bpmVertex = (BPMVertex)CurrentVertex;
             var interval = BPM2Millisecond(bpmVertex.BPM);
             var beatNumber = 0;
-            while (bpmVertex.Time.TotalSeconds + interval * beatNumber < CurrentSecond) beatNumber++;
-            var startBeat = (int)((bpmVertex.Time.TotalSeconds + interval * beatNumber - CurrentSecond) * 1000);
+            while (bpmVertex.Time.TotalSeconds * 1000 + interval * beatNumber < CurrentSecond * 1000) beatNumber++;
+            var startBeat = bpmVertex.Time.TotalSeconds * 1000 + interval * beatNumber - CurrentSecond * 1000;
             var beatArray = new bool[FramesPerSecond];
             while (startBeat < 1000)
             {
-                beatArray[Millisecond2Position(startBeat)] = true;
+                var millisecond = Millisecond2Position((int)startBeat);
+                var number = millisecond < FramesPerSecond ? millisecond : FramesPerSecond - 1;
+                beatArray[(int)number] = true;
                 startBeat += interval;
             }
 
