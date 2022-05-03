@@ -81,5 +81,11 @@ namespace BeatMeGameModel.IOWorkers
             if(!File.Exists(path)) return;
             File.Delete(path);
         }
+
+        public static void SaveFile(string levelName, string fileName, string content)
+        {
+            var path = Path + "\\" + levelName + "\\" + fileName;
+            File.WriteAllText(path, content);
+        }
     }
 }

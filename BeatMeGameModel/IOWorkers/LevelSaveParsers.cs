@@ -10,12 +10,6 @@ namespace BeatMeGameModel.IOWorkers
         Game
     }
 
-    public enum BeatDetectionType
-    {
-        BPM,
-        FFT
-    }
-
     public class LevelSaveParsers
     {
         public static LevelSave TryParseLevelSave(string path, LaunchType type)

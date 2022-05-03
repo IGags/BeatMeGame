@@ -25,5 +25,18 @@ namespace BeatMeGameModel
                     return false;
             }
         }
+
+        public static string ToString(BeatDetectionType type)
+        {
+            switch (type)
+            {
+                case BeatDetectionType.FFT:
+                    return "FFT";
+                case BeatDetectionType.BPM:
+                    return "BPM";
+                default:
+                    return "FFT";
+            }
+        }
     }
 }

@@ -41,14 +41,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BeatDetectionTypeExtensions.cs" />
+    <Compile Include="IOWorkers\BeatDetectionTypeExtensions.cs" />
     <Compile Include="BeatVertexes\BeatVertex.cs" />
     <Compile Include="BeatVertexes\BPMVertex.cs" />
     <Compile Include="BeatVertexes\FFTVertex.cs" />
     <Compile Include="BeatVertexes\VertexTypeExtensions.cs" />
     <Compile Include="ConformityData.cs" />
     <Compile Include="EditorModels\MusicEditorModel.cs" />
+    <Compile Include="IOWorkers\BeatDetectionType.cs" />
     <Compile Include="IOWorkers\LevelFolderWorker.cs" />
+    <Compile Include="IOWorkers\LevelSavePacker.cs" />
     <Compile Include="IOWorkers\LevelSaveParsers.cs" />
     <Compile Include="ManifestData.cs" />
     <Compile Include="MenuBGModels\SpectrumBarsModel.cs" />

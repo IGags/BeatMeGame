@@ -139,6 +139,13 @@ namespace BeatMeGame.EditorView
                 VisualizeModel();
             };
 
+            saveButton.Click += (sender, args) =>
+            {
+                model.PackVertices(model.Vertices, PackingDirection.Backward);
+                LevelSavePacker.PackSave(model.Save);
+                model.UnpackVertices(model.CurrentSecond, PackingDirection.Forward);
+            };
+
             trackPositionTrackBar.ValueChanged += (sender, args) =>
             {
                 trackPositionLabel.Text = (new TimeSpan(0, 0, model.CurrentSecond)).ToString();

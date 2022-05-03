@@ -19,5 +19,10 @@ namespace BeatMeGameModel.BeatVertexes
             BotFrequency = botFrequency;
             ThresholdValue = thresholdValue;
         }
+
+        public override string ToString()
+        {
+            return string.Join(" ", base.ToString(), TopFrequency, BotFrequency, ThresholdValue);
+        }
     }
 }

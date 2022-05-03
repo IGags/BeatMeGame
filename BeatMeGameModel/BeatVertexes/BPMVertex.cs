@@ -15,5 +15,10 @@ namespace BeatMeGameModel.BeatVertexes
         {
             BPM = bpm;
         }
+
+        public override string ToString()
+        {
+            return string.Join(" ", base.ToString(), BPM);
+        }
     }
 }

@@ -29,5 +29,22 @@ namespace BeatMeGameModel.BeatVertexes
                     return false;
             }
         }
+
+        public static string ToString(this VertexType type)
+        {
+            switch (type)
+            {
+                case VertexType.Artificial:
+                    return "art";
+                case VertexType.FFT:
+                    return "fft";
+                case VertexType.BPM:
+                    return "bpm";
+                case VertexType.Deletion:
+                    return "del";
+                default:
+                    return "del";
+            }
+        }
     }
 }

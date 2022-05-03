@@ -23,5 +23,10 @@ namespace BeatMeGameModel.BeatVertexes
             Time = time;
             Type = type;
         }
+
+        public override string ToString()
+        {
+            return string.Join(" ", Time, VertexTypeExtensions.ToString(Type));
+        }
     }
 }
