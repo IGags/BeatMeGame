@@ -64,7 +64,7 @@ namespace BeatMeGameModel.IOWorkers
             }
 
             if (!isParsed) return null;
-            return type != VertexType.Artificial || type != VertexType.Deletion 
+            return type != VertexType.Artificial && type != VertexType.Deletion
                 ? null : new BeatVertex(time, type);
         }
 
@@ -76,8 +76,8 @@ namespace BeatMeGameModel.IOWorkers
             var config = rawManifest.Split('\n');
             if (config.Length != 3) return RebuildManifest(levelName);
             return !LevelFolderWorker.CheckFileExist(levelName, config[0]) 
-                   | config[1].TryParseBeatDetectionType(out var beatType) 
-                   | int.TryParse(config[2], out var startSecond)
+                   | !config[1].TryParseBeatDetectionType(out var beatType) 
+                   | !int.TryParse(config[2], out var startSecond)
                 ? new ManifestData() : new ManifestData(config[0], beatType, startSecond);
         }
 

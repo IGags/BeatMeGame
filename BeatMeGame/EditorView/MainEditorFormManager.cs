@@ -23,9 +23,9 @@ namespace BeatMeGame.EditorView
             if (save.Manifest == null || save.Manifest.SongName == "")
             {
                 ChooseSong(save, true);
-                var creator = (IFormCreator)parent;
-                creator.CreateChildForm(new MusicEditorForm(parent, save));
             }
+            var creator = (IFormCreator)parent;
+            creator.CreateChildForm(new MusicEditorForm(parent, save));
         }
 
         private void ChooseSong(LevelSave save, bool looped)

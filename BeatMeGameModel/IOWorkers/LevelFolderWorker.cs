@@ -43,8 +43,8 @@ namespace BeatMeGameModel.IOWorkers
 
         public static bool TryReadFile(string levelName, out string outString, string fileName)
         {
-            var path = Path + "\\" + levelName + "manifest.txt";
-            if (!Directory.Exists(path))
+            var path = Path + "\\" + levelName + "\\" + fileName;
+            if (!File.Exists(path))
             {
                 outString = null;
                 return false;
