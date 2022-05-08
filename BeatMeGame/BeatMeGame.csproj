@@ -79,6 +79,12 @@
     <Compile Include="EditorView\BeatButton.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="EditorView\EditorDialogForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EditorView\EditorExitDialogForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="EditorView\EditorLoadingForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -91,7 +97,9 @@
     </Compile>
     <Compile Include="Interfaces\IFormCreator.cs" />
     <Compile Include="Interfaces\IMainWindow.cs" />
+    <Compile Include="Interfaces\ISoundPlayer.cs" />
     <Compile Include="Interfaces\ISoundProvider.cs" />
+    <Compile Include="Interfaces\IStateEditor.cs" />
     <Compile Include="Interfaces\ITerminatable.cs" />
     <Compile Include="MenuView\LevelCreationDialogForm.cs">
       <SubType>Form</SubType>
@@ -107,16 +115,21 @@
     </Compile>
     <Compile Include="MenuBGWrappers\IMenuBGWrapper.cs" />
     <Compile Include="MenuBGWrappers\StarfieldWrapper.cs" />
-    <Compile Include="MenuView\MenuListForm.cs">
-      <SubType>Form</SubType>
+    <Compile Include="MenuView\MenuListPanel.cs">
+      <SubType>Component</SubType>
     </Compile>
-    <Compile Include="MenuView\MenuRedactorForm.cs">
-      <SubType>Form</SubType>
+    <Compile Include="MenuView\MenuRedactorPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="MenuView\MenuSoundEngine.cs" />
+    <Compile Include="MenuView\MenuStateMachine.cs" />
+    <Compile Include="MenuView\RedirectionButton.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="MenuView\SettingsForm.cs">
-      <SubType>Form</SubType>
+    <Compile Include="MenuView\SettingsPanel.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Settings\ScreenStateExtensions.cs" />
     <Compile Include="Settings\Settings.cs" />

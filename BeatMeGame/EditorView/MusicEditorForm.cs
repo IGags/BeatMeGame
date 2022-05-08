@@ -119,6 +119,13 @@ namespace BeatMeGame.EditorView
                 BackColor = Color.Gray,
             };
 
+            var saveAndExitButton = new Button()
+            {
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.DarkGray,
+                Text = "Сохранить и выйти"
+            };
+
             increaseBeatSecondButton.Click += (sender, args) =>
             {
                 model.GetNextSecond();
@@ -141,9 +148,36 @@ namespace BeatMeGame.EditorView
 
             saveButton.Click += (sender, args) =>
             {
-                model.PackVertices(model.Vertices, PackingDirection.Backward);
-                LevelSavePacker.PackSave(model.Save);
-                model.UnpackVertices(model.CurrentSecond, PackingDirection.Forward);
+                model.SaveModel();
+            };
+
+            startSettingButton.Click += (sender, args) =>
+            {
+
+            };
+
+            saveAndExitButton.Click += (sender, args) =>
+            {
+                var dialog = new EditorExitDialogForm(this);
+                var result = dialog.ShowDialog();
+                switch (result)
+                {
+                    case DialogResult.OK:
+                    {
+                        model.SaveModel();
+                        var creator = (IFormCreator)MdiParent;
+                        creator.ReestablishScene();
+                        Close();
+                        break;
+                    }
+                    case DialogResult.Yes:
+                    {
+                        var creator = (IFormCreator)MdiParent;
+                        creator.ReestablishScene();
+                        Close();
+                        break;
+                    }
+                }
             };
 
             trackPositionTrackBar.ValueChanged += (sender, args) =>
@@ -162,28 +196,29 @@ namespace BeatMeGame.EditorView
 
             Load += (sender, args) =>
             {
-                var marginRange = ClientSize.Width / 50; 
+                var marginRange = ClientSize.Width / 50;
                 Size = new Size(MdiParent.ClientSize.Width - 4, MdiParent.ClientSize.Height - 4);
                 Location = Parent.Location;
+                var buttonSize = new Size(ClientSize.Width / 18, ClientSize.Height / 30);
                 trackPositionTrackBar.Size = new Size(3 * ClientSize.Width / 8, trackPositionTrackBar.Height);
                 trackPositionTrackBar.Location = new Point(ClientSize.Width / 16, 5 * ClientSize.Height / 6);
                 trackPositionLabel.Size = new Size(ClientSize.Width / 20, ClientSize.Height / 40);
                 trackPositionLabel.Location = new Point(trackPositionTrackBar.Right, trackPositionTrackBar.Location.Y);
-                playTestButton.Size = new Size(ClientSize.Width / 18, ClientSize.Height / 30);
+                playTestButton.Size = buttonSize;
                 playTestButton.Location = new Point(trackPositionLabel.Right + marginRange, trackPositionLabel.Location.Y);
-                startSettingButton.Size = playTestButton.Size;
+                startSettingButton.Size = buttonSize;
                 startSettingButton.Location = new Point(playTestButton.Right + marginRange,
                     trackPositionLabel.Location.Y);
-                saveButton.Size = playTestButton.Size;
+                saveButton.Size = buttonSize;
                 saveButton.Location = new Point(startSettingButton.Right + marginRange, trackPositionLabel.Location.Y);
-                analyzeTypeButton.Size = playTestButton.Size;
+                analyzeTypeButton.Size = buttonSize;
                 analyzeTypeButton.Location = new Point(saveButton.Right + marginRange, trackPositionLabel.Location.Y);
                 spectrogramPanel.Size = new Size(3 * ClientSize.Width / 4, ClientSize.Height / 2);
                 spectrogramPanel.Location = new Point(ClientSize.Width / 12, ClientSize.Height / 12);
                 beatStatusPanel.Size = new Size(spectrogramPanel.Width, ClientSize.Height / 18);
                 beatStatusPanel.Location =
                     new Point(spectrogramPanel.Left, spectrogramPanel.Bottom + ClientSize.Height / 12);
-                decreaseBeatSecondButton.Size = analyzeTypeButton.Size;
+                decreaseBeatSecondButton.Size = buttonSize;
                 decreaseBeatSecondButton.Location = new Point(beatStatusPanel.Left - decreaseBeatSecondButton.Width - marginRange,
                     beatStatusPanel.Top);
                 increaseBeatSecondButton.Size = decreaseBeatSecondButton.Size;
@@ -194,6 +229,8 @@ namespace BeatMeGame.EditorView
                 FFTCoefficientPanel.Location = new Point(spectrogramPanel.Right + marginRange, spectrogramPanel.Top);
                 beatCoefficientPanel.Size = FFTCoefficientPanel.Size;
                 beatCoefficientPanel.Location = FFTCoefficientPanel.Location;
+                saveAndExitButton.Size = buttonSize;
+                saveAndExitButton.Location = new Point(increaseBeatSecondButton.Location.X, 24 * ClientSize.Height / 25);
             };
 
             FFTCoefficientPanel.Resize += (sender, args) =>
@@ -226,6 +263,7 @@ namespace BeatMeGame.EditorView
             Controls.Add(increaseBeatSecondButton);
             Controls.Add(FFTCoefficientPanel);
             Controls.Add(beatCoefficientPanel);
+            Controls.Add(saveAndExitButton);
         }
 
         private void InitializeAnalyzeState()

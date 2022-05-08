@@ -4,11 +4,13 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using BeatMeGame.EditorView;
+using BeatMeGame.Interfaces;
+using BeatMeGame.MenuView;
 using BeatMeGameModel.IOWorkers;
 
 namespace BeatMeGame
 {
-    public class MenuRedactorForm : Form
+    public class MenuRedactorPanel : Panel
     {
         private List<string> levels;
         private Panel levelSelectionPanel;
@@ -18,21 +20,19 @@ namespace BeatMeGame
         private Label levelNameLabel;
         private Form parent;
 
-        public MenuRedactorForm(Form mdiParent)
+        public MenuRedactorPanel(Form mdiParent)
         {
-            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
             Initialize(mdiParent);
             parent = mdiParent;
         }
 
         private void Initialize(Form mdiParent)
         {
-            FormBorderStyle = FormBorderStyle.None;
-            MdiParent = mdiParent;
-            BackColor = Color.Transparent;
+            parent = mdiParent;
+            BackColor = Color.DarkGray;
             levels = LevelFolderWorker.FindLevels().ToList();
 
-            backButton = new Button()
+            backButton = new RedirectionButton()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
@@ -56,7 +56,6 @@ namespace BeatMeGame
             levelInformationPanel = new Panel()
             {
                 BackColor = Color.Gray,
-
             };
 
             levelCreationButton.Click += (sender, args) =>
@@ -67,19 +66,11 @@ namespace BeatMeGame
 
             backButton.Click += (sender, args) =>
             {
-                var creator = (IFormCreator)MdiParent;
-                creator.CreateChildForm(new MenuListForm(MdiParent));
-                Close();
+                ((IStateEditor)parent).Machine.ChangeState((RedirectionButton)backButton);
+                Dispose();
             };
 
-            Load += (sender, args) =>
-            {
-                OnSizeChanged(args);
-                VisualizeLevelList();
-                InitializeLevelInfoPanel();
-            };
-
-            MdiParent.SizeChanged += (sender, args) =>
+            parent.SizeChanged += (sender, args) =>
             {
                 OnSizeChanged(args);
                 VisualizeLevelList();
@@ -87,9 +78,8 @@ namespace BeatMeGame
 
             SizeChanged += (sender, args) =>
             {
-                if(MdiParent == null) return;
-                Size = new Size(7 * MdiParent.ClientSize.Width / 8, 7 * MdiParent.ClientSize.Height / 8);
-                Location = new Point(MdiParent.ClientSize.Width / 16, MdiParent.ClientSize.Height / 16);
+                Size = new Size(7 * parent.ClientSize.Width / 8, 7 * parent.ClientSize.Height / 8);
+                Location = new Point(parent.ClientSize.Width / 16, parent.ClientSize.Height / 16);
                 backButton.Location = new Point(13 * ClientSize.Width / 16, 13 * ClientSize.Height / 15);
                 backButton.Size = new Size(ClientSize.Width / 13, ClientSize.Height / 17);
                 levelSelectionPanel.Size = new Size(ClientSize.Width / 4, 9 * ClientSize.Height / 10);
@@ -98,12 +88,15 @@ namespace BeatMeGame
                 levelInformationPanel.Size = new Size(2 * ClientSize.Width / 3, 3 * ClientSize.Height / 4);
                 levelInformationPanel.Location = new Point(levelSelectionPanel.Right + ClientSize.Width / 40,
                     ClientSize.Height / 50);
+                InitializeLevelInfoPanel();
+                VisualizeLevelList();
             };
 
             Controls.Add(backButton);
             Controls.Add(levelSelectionPanel);
             Controls.Add(levelCreationButton);
             Controls.Add(levelInformationPanel);
+            OnSizeChanged(EventArgs.Empty);
         }
 
         private void VisualizeLevelList()
@@ -148,7 +141,7 @@ namespace BeatMeGame
                 Size = backButton.Size,
                 FlatStyle = FlatStyle.Flat,
                 Location = new Point(levelInformationPanel.Location.X + 7 * levelInformationPanel.Size.Width / 16, 
-                    levelInformationPanel.Location.Y + 9 * levelInformationPanel.Size.Height / 10)
+                    levelInformationPanel.Location.Y + 8 * levelInformationPanel.Size.Height / 10)
             };
 
             var editorModeButton = new Button()
@@ -157,7 +150,7 @@ namespace BeatMeGame
                 FlatStyle = FlatStyle.Flat,
                 Text = "Редактировать",
                 Location = new Point(3 * levelInformationPanel.Size.Width / 16,
-                    levelInformationPanel.Location.Y + 9 * levelInformationPanel.Size.Height / 10),
+                    levelInformationPanel.Location.Y + 8 * levelInformationPanel.Size.Height / 10),
                 BackColor = Color.DarkKhaki
             };
 
@@ -167,7 +160,7 @@ namespace BeatMeGame
                 FlatStyle = FlatStyle.Flat,
                 Text = "Играть",
                 Location = new Point(1 * levelInformationPanel.Size.Width / 16,
-                    levelInformationPanel.Location.Y + 9 * levelInformationPanel.Size.Height / 10),
+                    levelInformationPanel.Location.Y + 8 * levelInformationPanel.Size.Height / 10),
                 BackColor = Color.DarkSeaGreen
             };
 
@@ -177,7 +170,7 @@ namespace BeatMeGame
                 FlatStyle = FlatStyle.Flat,
                 Text = "Переименовать",
                 Location = new Point(5 * levelInformationPanel.Size.Width / 16,
-                    levelInformationPanel.Location.Y + 9 * levelInformationPanel.Size.Height / 10),
+                    levelInformationPanel.Location.Y + 8 * levelInformationPanel.Size.Height / 10),
                 BackColor = Color.CornflowerBlue
             };
 
@@ -208,8 +201,9 @@ namespace BeatMeGame
             editorModeButton.Click += (sender, args) =>
             {
                 if(selectedButton == null) return;
-                var creator = (IFormCreator)parent;
-                creator.ChangeScene(this);
+                ((ISoundPlayer)parent).MusicEngine.DeleteTread();
+                var creator = (IFormCreator)(parent.MdiParent);
+                creator.ChangeScene(parent);
                 creator.CreateChildForm(new EditorLoadingForm(parent, selectedButton.Name));
             };
 
@@ -228,7 +222,7 @@ namespace BeatMeGame
 
         private void ReconfigueLevel(string text, Func<(string, string), bool> configurationFunc)
         {
-            var dialogForm = new LevelCreationDialogForm(this, text);
+            var dialogForm = new LevelCreationDialogForm(parent, text);
             var result = dialogForm.ShowDialog();
             var isCreated = true;
             var oldName = "";
@@ -237,7 +231,7 @@ namespace BeatMeGame
             dialogForm.Close();
             if (!isCreated)
             {
-                var dialog = new LevelCreationExceptionDialogForm(this);
+                var dialog = new LevelCreationExceptionDialogForm(parent);
                 dialog.ShowDialog();
             }
             VisualizeLevelList();

@@ -10,7 +10,7 @@ namespace BeatMeGameModel.MenuBGModels
     {
         public readonly List<StarfieldStar> Stars = new List<StarfieldStar>();
         public const int SpeedBase = 100;
-        private const int StarsCount = 5000;
+        private const int StarsCount = 1000;
         private const int SpawnRadius = 200;
         private Random Random { get; } = new Random();
         private readonly int cutoutCircleRadius;

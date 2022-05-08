@@ -6,7 +6,7 @@ using SoundEngineLibrary;
 
 namespace BeatMeGame
 {
-    class MainWindow : Form, ITerminatable, IFormCreator, IMainWindow, ISoundProvider
+    class MainWindow : Form, ITerminatable, ISoundProvider, IMainWindow, IFormCreator
     {
         private Settings settingsConfig;
         private Form childForm;
@@ -58,12 +58,9 @@ namespace BeatMeGame
 
         public void ReestablishScene()
         {
-            var parent = this;
-            var child = new MainMenuForm(parent);
+            var child = new MainMenuForm(this);
             child.Show();
             childForm = child;
-            ChangeScene(previousScene);
-            previousScene.Show();
         }
 
         public void SetSettings(Settings settings)

@@ -245,7 +245,7 @@ namespace BeatMeGameModel.EditorModels
 
         public void GetPreviousSecond()
         {
-            if(CurrentSecond == 0) return;
+            if(CurrentSecond == Save.Manifest.StartSecond) return;
             CurrentSecond--;
             PackVertices(Vertices, PackingDirection.Backward);
             UnpackVertices(CurrentSecond, PackingDirection.Backward);
@@ -273,6 +273,13 @@ namespace BeatMeGameModel.EditorModels
                     GetNextSecond();
                 }
             }
+        }
+
+        public void SaveModel()
+        {
+            PackVertices(Vertices, PackingDirection.Backward);
+            LevelSavePacker.PackSave(Save);
+            UnpackVertices(CurrentSecond, PackingDirection.Forward);
         }
 
         private void ClearDeletionVertexes()

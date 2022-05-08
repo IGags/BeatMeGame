@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BeatMeGame.MenuView;
 using BeatMeGameModel;
 using BeatMeGameModel.MenuBGModels;
 using SoundEngineLibrary;
@@ -13,17 +14,17 @@ namespace BeatMeGame.MenuBGWrappers
     public class StarfieldWrapper : IMenuBGWrapper
     {
         private StarfieldModel bgModel;
-        private SoundEngine engine;
+        private MenuSoundEngine engine;
         private readonly SpectrumBarsModel bars = new SpectrumBarsModel();
         private Size ClientSize;
         private string treadName;
 
-        public StarfieldWrapper(int xSize, int ySize, SoundEngine engine, string treadName)
+        public StarfieldWrapper(int xSize, int ySize, MenuSoundEngine engine)
         {
-            Initialize(xSize, ySize, engine, treadName);
+            Initialize(xSize, ySize, engine, engine.TreadName);
         }
 
-        public void Initialize(int x, int y, SoundEngine engine, string treadName)
+        public void Initialize(int x, int y, MenuSoundEngine engine, string treadName)
         {
             bgModel = new StarfieldModel(x, y);
             this.engine = engine;
@@ -50,8 +51,8 @@ namespace BeatMeGame.MenuBGWrappers
             }
 
             if (treadName == null) return;
-            var spectrum = engine.GetTread(treadName).TrackFFT
-                .GetFFTData(engine.GetTread(treadName).CurrentTrack.CurrentTime).ToList();
+            var spectrum = engine.Engine.GetTread(treadName).TrackFFT
+                .GetFFTData(engine.Engine.GetTread(treadName).CurrentTrack.CurrentTime).ToList();
             var updatedSpectrum = bars.Update(spectrum).Take(100).ToList();
             var barWidth = (float)ClientSize.Width / updatedSpectrum.Count;
             var totalBars = updatedSpectrum.Count;
@@ -73,8 +74,8 @@ namespace BeatMeGame.MenuBGWrappers
 
         private Color GetBrushColor(int barNumber, int totalBars)
         {
-            var currentTime = engine.GetTread(treadName).CurrentTrack.CurrentTime.TotalSeconds;
-            var relativeTimePart = currentTime / engine.GetTread(treadName).MaxSongDuration.TotalSeconds;
+            var currentTime = engine.Engine.GetTread(treadName).CurrentTrack.CurrentTime.TotalSeconds;
+            var relativeTimePart = currentTime / engine.Engine.GetTread(treadName).MaxSongDuration.TotalSeconds;
             var paintedBarCount = relativeTimePart * totalBars;
             if (paintedBarCount < barNumber) return Color.FromArgb(150, 122, 122, 122);
             var barDifference = paintedBarCount - barNumber;
