@@ -14,7 +14,7 @@ namespace BeatMeGameModel.EditorModels
         Forward,
         Backward
     }
-    public class MusicEditorModel
+    public class MusicEditorModel //TODO: баг с точкой старта
     {
         public SoundEngineTread WorkTread { get; }
         public LevelSave Save { get; }
@@ -57,6 +57,24 @@ namespace BeatMeGameModel.EditorModels
                 return (Millisecond2Position(millisecond), value.Item2);
             }).ToDictionary(value => value.Item1, value => value.Item2);
             Vertices = UnpackChainVertices(ms, direction);
+        }
+
+        public TimeSpan GetTimeLimit()
+        {
+            return WorkTread?.MaxSongDuration ?? TimeSpan.Zero;
+        }
+
+        public void ChangeStartTime(int newTime)
+        {
+            var beatToDeletion = Save.Beat.Keys
+                .Where(time => time.TotalSeconds < Save.Manifest.StartSecond)
+                .ToList();
+            foreach (var beat in beatToDeletion)
+                Save.Beat.Remove(beat);
+            previousVertexStack.Clear();
+            PackVertices(Vertices, PackingDirection.Backward);
+            UnpackVertices(newTime, PackingDirection.Forward);
+            Save.Manifest.StartSecond = newTime;
         }
 
         public int Millisecond2Position(int time)

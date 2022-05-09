@@ -47,9 +47,11 @@ namespace BeatMeGame.EditorView
             FormBorderStyle = FormBorderStyle.None;
             BackColor = Color.DarkGray;
             DoubleBuffered = true;
+            var startTime = new TimeSpan(0, 0, model.Save.Manifest.StartSecond);
 
             var trackPositionTrackBar = new TrackBar()
             {
+                Minimum = (int)startTime.TotalSeconds,
                 TickStyle = TickStyle.None,
                 Maximum = (int)model.WorkTread.MaxSongDuration.TotalSeconds
             };
@@ -58,7 +60,7 @@ namespace BeatMeGame.EditorView
             {
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font(FontFamily.GenericSansSerif, 12),
-                Text = "00:00"
+                Text = startTime.ToString()
             };
 
             var playTestButton = new Button()
@@ -86,7 +88,7 @@ namespace BeatMeGame.EditorView
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
-                Text = "Тип Анализа: FFT"
+                Text = "Тип Анализа: " + (model.Save.Manifest.DetectionType == BeatDetectionType.FFT ? "FFT" : "BPM")
             };
 
             var spectrogramPanel = new Panel()
@@ -157,7 +159,13 @@ namespace BeatMeGame.EditorView
 
             startSettingButton.Click += (sender, args) =>
             {
-                
+                var dialog = new TimeSelectionDialogForm(this, model.GetTimeLimit(), model.Save.Manifest.StartSecond);
+                if (dialog.ShowDialog() != DialogResult.OK) return;
+                trackPositionTrackBar.Minimum = dialog.StartSecond;
+                trackPositionTrackBar.Value = dialog.StartSecond;
+                trackPositionLabel.Text = new TimeSpan(0, 0, dialog.StartSecond).ToString();
+                model.ChangeStartTime(dialog.StartSecond);
+                VisualizeModel();
             };
 
             saveAndExitButton.Click += (sender, args) =>
@@ -195,7 +203,7 @@ namespace BeatMeGame.EditorView
             {
                 model.ChangeAnalyzeType();
                 InitializeAnalyzeState();
-                trackPositionTrackBar.Value = 0;
+                trackPositionTrackBar.Value = model.Save.Manifest.StartSecond;
                 analyzeTypeButton.Text = @"Тип анализа ";
                 analyzeTypeButton.Text += model.Save.Manifest.DetectionType == BeatDetectionType.FFT ? "FFT" : "BPM";
             };
