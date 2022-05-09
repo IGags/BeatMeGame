@@ -58,13 +58,13 @@ namespace BeatMeGame
 
             settingsButton.Click += (sender, args) =>
             {
-                ((IStateEditor)parent).Machine.ChangeState(settingsButton);
+                ((IStateEditor)parent).StateMachine.ChangeState(settingsButton);
                 Dispose();
             };
 
             redactorButton.Click += (sender, args) =>
             {
-                ((IStateEditor)parent).Machine.ChangeState(redactorButton);
+                ((IStateEditor)parent).StateMachine.ChangeState(redactorButton);
                 Dispose();
             };
 

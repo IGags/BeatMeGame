@@ -7,7 +7,6 @@ using SoundEngineLibrary;
 using BeatMeGameModel.BeatVertexes;
 using BeatMeGameModel.IOWorkers;
 
-//ToDo: унифицировать методы работы с цепными анализаторами.
 namespace BeatMeGameModel.EditorModels
 {
     public enum PackingDirection

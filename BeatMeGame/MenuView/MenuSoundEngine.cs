@@ -20,14 +20,20 @@ namespace BeatMeGame.MenuView
         public MenuSoundEngine(SoundEngine engine)
         {
             Engine = engine;
-            CheckAndChangeTrack();
-            updateTimer.Tick += (sender, args) => { CheckAndChangeTrack(); };
+            CheckAndChangeTrack(true);
+            updateTimer.Tick += (sender, args) => { CheckAndChangeTrack(false); };
         }
 
-        public void DeleteTread()
+        public void PauseTread()
         {
-            Engine.TerminateTread(TreadName);
-            TreadName = null;
+            if(Engine.GetTread(TreadName).OutputDevice.PlaybackState == PlaybackState.Playing)
+                Engine.GetTread(TreadName).ChangePlaybackState();
+        }
+
+        public void ResumeTread()
+        {
+            if (Engine.GetTread(TreadName).OutputDevice.PlaybackState == PlaybackState.Paused)
+                Engine.GetTread(TreadName).ChangePlaybackState();
         }
 
         private Queue<string> GetShuffledMenuSongQueue()
@@ -50,17 +56,19 @@ namespace BeatMeGame.MenuView
             return outQueue;
         }
 
-        private void CheckAndChangeTrack()
+        private void CheckAndChangeTrack(bool isInitialize)
         {
             if (musicQueue.Count == 0 && GetShuffledMenuSongQueue().Count == 0) return;
             if (musicQueue.Count == 0) musicQueue = GetShuffledMenuSongQueue();
             if (TreadName == null)
             {
+                if(!isInitialize) return;
                 TreadName = Engine
                     .CreateTread(ThreadOptions.StaticThread, musicQueue.Dequeue(), FFTExistance.Exist);
             }
 
-            if (Engine.GetTread(TreadName).OutputDevice.PlaybackState == PlaybackState.Playing) return;
+            if (Engine.GetTread(TreadName).OutputDevice.PlaybackState == PlaybackState.Playing 
+                || Engine.GetTread(TreadName).OutputDevice.PlaybackState == PlaybackState.Paused) return;
             GC.Collect();
             Engine.GetTread(TreadName).ChangeTrack(musicQueue.Dequeue());
         }

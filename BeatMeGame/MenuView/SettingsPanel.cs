@@ -17,7 +17,7 @@ namespace BeatMeGame
         private void Initialize(Form parent)
         {
             BackColor = Color.DarkGray;
-            settings = ((IMainWindow)parent.MdiParent).GetSettings();
+            settings = ((IMainWindow)(parent.MdiParent)).GetSettings();
             var font = new Font(FontFamily.GenericMonospace, 12);
 
             var headerLabel = new Label
@@ -36,7 +36,7 @@ namespace BeatMeGame
 
             backButton.Click += (sender, args) =>
             {
-                ((IStateEditor)parent).Machine.ChangeState((RedirectionButton)backButton);
+                ((IStateEditor)parent).StateMachine.ChangeState((RedirectionButton)backButton);
                 var setter = (IMainWindow)(parent.MdiParent);
                 setter.SetSettings(settings);
                 Dispose();

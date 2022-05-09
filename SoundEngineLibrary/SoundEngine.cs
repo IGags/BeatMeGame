@@ -77,6 +77,8 @@ namespace SoundEngineLibrary
         {
             TreadList[treadName].ChangePlaybackState();
             TreadList[treadName].OutputDevice.Dispose();
+            TreadList[treadName].CurrentTrack.Dispose();
+            if(TreadList[treadName].TrackFFT != null) TreadList[treadName].TrackFFT.Dispose();
             TreadList.Remove(treadName);
         }
 

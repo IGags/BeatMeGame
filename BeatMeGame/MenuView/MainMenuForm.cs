@@ -18,27 +18,29 @@ namespace BeatMeGame
 {
     public class MainMenuForm : Form, IStateEditor, ISoundPlayer
     {
-        public MenuStateMachine Machine { get; set; }
+        public MenuStateMachine StateMachine { get; set; }
         public MenuSoundEngine MusicEngine { get; private set; }
 
         private Timer updateTimer;
         private IMenuBGWrapper wrapper;
 
-        public MainMenuForm(Form parent)
+        public MainMenuForm(Form parent, MenuStateMachine stateMachine = null)
         {
-            Initialize(parent);
+            AllowTransparency = true;
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+            Initialize(parent, stateMachine);
             updateTimer.Enabled = true;
         }
 
-        private void Initialize(Form parent)
+        private void Initialize(Form parent, MenuStateMachine stateMachine)
         {
             DoubleBuffered = true;
             MdiParent = parent;
             Size = parent.ClientSize;
             FormBorderStyle = FormBorderStyle.None;
             BackColor = Color.Black;
-            Machine = new MenuStateMachine();
-            Machine.StateChanged += VisualizeState;
+            StateMachine = stateMachine ?? new MenuStateMachine();
+            StateMachine.StateChanged += VisualizeState;
             MusicEngine = new MenuSoundEngine(((ISoundProvider)parent).GetMusicEngine());
 
             updateTimer = new Timer { Interval = 16 };
@@ -62,7 +64,8 @@ namespace BeatMeGame
 
             MdiParent.Resize += (sender, args) =>
             {
-                Size = new Size(MdiParent.ClientSize.Width - 4, MdiParent.ClientSize.Height - 4);
+                if(MdiParent == null) Close();
+                else Size = new Size(MdiParent.ClientSize.Width - 5, MdiParent.ClientSize.Height - 5);
             };
 
             Closing += (sender, args) =>
@@ -70,7 +73,18 @@ namespace BeatMeGame
                 updateTimer.Enabled = false;
             };
 
-            Controls.Add(new MenuListPanel(this));
+            VisibleChanged += (sender, args) =>
+            {
+                if (!Visible)
+                {
+                    MusicEngine.PauseTread();
+                    return;
+                }
+                Location = Point.Empty;
+                MusicEngine.ResumeTread();
+            };
+
+            VisualizeState();
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -83,7 +97,7 @@ namespace BeatMeGame
         private void VisualizeState()
         {
             Controls.Clear();
-            switch (Machine.State)
+            switch (StateMachine.State)
             {
                 case State.MenuList:
                     Controls.Add(new MenuListPanel(this));

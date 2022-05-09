@@ -15,7 +15,7 @@ namespace BeatMeGame.EditorView
             var saveAndExitButton = new Button()
             {
                 Size = buttonSize,
-                Location = new Point(formSize.Width / 2 - Size.Width / 2, buttonConstant),
+                Location = new Point(formSize.Width / 2 - buttonSize.Width / 2, buttonConstant),
                 Text = "Сохранить и выйти",
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray

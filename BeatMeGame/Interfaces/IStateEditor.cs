@@ -9,6 +9,6 @@ namespace BeatMeGame.Interfaces
 {
     interface IStateEditor
     {
-        MenuStateMachine Machine { get; }
+        MenuStateMachine StateMachine { get; }
     }
 }

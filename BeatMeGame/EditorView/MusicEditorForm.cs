@@ -19,6 +19,8 @@ namespace BeatMeGame.EditorView
     public class MusicEditorForm : Form
     {
         private readonly MusicEditorModel model;
+        private readonly string treadName;
+        private readonly SoundEngine engine;
         private List<BeatButton> beatButtons;
         private Panel beatStatusPanel;
         private Panel FFTCoefficientPanel;
@@ -33,6 +35,8 @@ namespace BeatMeGame.EditorView
             var treadName = soundTestEngine.CreateTread(ThreadOptions.StaticThread,
                 "Levels" + "\\" + save.LevelName + "\\" + save.Manifest.SongName, FFTExistance.Exist);
             var workTread = soundTestEngine.GetTread(treadName);
+            this.treadName = treadName;
+            engine = soundTestEngine;
             workTread.ChangePlaybackState();
             model = new MusicEditorModel(workTread, save);
             Initialize();
@@ -153,7 +157,7 @@ namespace BeatMeGame.EditorView
 
             startSettingButton.Click += (sender, args) =>
             {
-
+                
             };
 
             saveAndExitButton.Click += (sender, args) =>
@@ -165,6 +169,7 @@ namespace BeatMeGame.EditorView
                     case DialogResult.OK:
                     {
                         model.SaveModel();
+                        engine.TerminateTread(treadName);
                         var creator = (IFormCreator)MdiParent;
                         creator.ReestablishScene();
                         Close();
@@ -172,6 +177,7 @@ namespace BeatMeGame.EditorView
                     }
                     case DialogResult.Yes:
                     {
+                        engine.TerminateTread(treadName);
                         var creator = (IFormCreator)MdiParent;
                         creator.ReestablishScene();
                         Close();

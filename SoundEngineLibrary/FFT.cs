@@ -38,6 +38,12 @@ namespace SoundEngineLibrary
             filePath = fullFilePath;
         }
 
+        public void Dispose()
+        {
+            file.Dispose();
+            decompressor.Dispose();
+        }
+
         public double[] GetFFTData(TimeSpan trackPosition)
         {
             if ((int)LastQueryTime.TotalSeconds != (int)trackPosition.TotalSeconds)

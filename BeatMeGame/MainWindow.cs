@@ -1,6 +1,9 @@
-﻿using System.Drawing;
+﻿using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using BeatMeGame.EditorView;
+using BeatMeGame.MenuView;
 using BeatMeGameModel;
 using SoundEngineLibrary;
 
@@ -10,10 +13,11 @@ namespace BeatMeGame
     {
         private Settings settingsConfig;
         private Form childForm;
-        private Form previousScene;
+        private MenuStateMachine previousScene;
         private readonly SoundEngine sfxEngine = new SoundEngine(100, 50);
         private readonly SoundEngine musicEngine = new SoundEngine(100, 50);
         private MainEditorFormManager editor;
+        private List<Form> menuForms = new List<Form>();
 
         public MainWindow()
         {
@@ -46,21 +50,27 @@ namespace BeatMeGame
             return settingsConfig;
         }
 
-        public void ChangeScene(Form previousScene)
+        public void ChangeScene(MenuStateMachine previousScene, Form newScene)
         {
-            this.previousScene = previousScene;
             foreach (var form in MdiChildren)
             {
-                if(form != previousScene) form.Close();
-                else form.Hide();
+                if(form == newScene) continue;
+                if(!menuForms.Contains(form)) menuForms.Add(form);
+                form.Hide();
             }
+            CreateChildForm(newScene);
         }
 
         public void ReestablishScene()
         {
-            var child = new MainMenuForm(this);
-            child.Show();
-            childForm = child;
+            foreach (var form in MdiChildren)
+            {
+                if (!menuForms.Contains(form)) form.Close();
+            }
+            foreach (var form in menuForms)
+            {
+                form.Show();
+            }
         }
 
         public void SetSettings(Settings settings)

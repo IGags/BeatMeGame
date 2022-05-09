@@ -23,7 +23,6 @@ namespace BeatMeGame
         public MenuRedactorPanel(Form mdiParent)
         {
             Initialize(mdiParent);
-            parent = mdiParent;
         }
 
         private void Initialize(Form mdiParent)
@@ -66,7 +65,7 @@ namespace BeatMeGame
 
             backButton.Click += (sender, args) =>
             {
-                ((IStateEditor)parent).Machine.ChangeState((RedirectionButton)backButton);
+                ((IStateEditor)parent).StateMachine.ChangeState((RedirectionButton)backButton);
                 Dispose();
             };
 
@@ -134,6 +133,7 @@ namespace BeatMeGame
 
         private void InitializeLevelInfoPanel()
         {
+            levelInformationPanel.Controls.Clear();
             var deletionButton = new Button()
             {
                 Text = "Удалить",
@@ -201,10 +201,9 @@ namespace BeatMeGame
             editorModeButton.Click += (sender, args) =>
             {
                 if(selectedButton == null) return;
-                ((ISoundPlayer)parent).MusicEngine.DeleteTread();
+                ((ISoundPlayer)parent).MusicEngine.PauseTread();
                 var creator = (IFormCreator)(parent.MdiParent);
-                creator.ChangeScene(parent);
-                creator.CreateChildForm(new EditorLoadingForm(parent, selectedButton.Name));
+                creator.ChangeScene(((IStateEditor)parent).StateMachine, new EditorLoadingForm(parent, selectedButton.Name));
             };
 
             this.levelNameLabel = levelNameLabel;
