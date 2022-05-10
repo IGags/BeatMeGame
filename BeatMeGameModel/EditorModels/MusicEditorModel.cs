@@ -24,7 +24,7 @@ namespace BeatMeGameModel.EditorModels
         private BeatVertex CurrentVertex { get; set; } = new BeatVertex(TimeSpan.Zero, VertexType.None);
         private BeatVertex lastVertexPerFrame = new BeatVertex(TimeSpan.Zero, VertexType.None);
         private readonly Stack<BeatVertex> previousVertexStack = new Stack<BeatVertex>();
-
+        private SpectrogramModel spectrogramModel;
         private Dictionary<TimeSpan, BeatVertex> alternativeType = new Dictionary<TimeSpan, BeatVertex>();
         public MusicEditorModel(SoundEngineTread tread, LevelSave save)
         {
@@ -32,6 +32,16 @@ namespace BeatMeGameModel.EditorModels
             Save = save;
             FramesPerSecond = WorkTread.TrackFFT.samplingFrequency / FFT.FFTSize;
             CurrentSecond = save.Manifest.StartSecond;
+            spectrogramModel = new SpectrogramModel(WorkTread.TrackFFT.LowEdge, WorkTread.TrackFFT.HighEdge,
+                WorkTread.TrackFFT.samplingFrequency);
+        }
+
+        public List<List<double>> GetSpectrogram(int lowFrequency, int highFrequency)
+        {
+            spectrogramModel.HighFrequency = highFrequency;
+            spectrogramModel.LowFrequency = lowFrequency;
+            return spectrogramModel.GetNormalizedSpectrogramMap(
+                WorkTread.TrackFFT.GetFFTSecond(new TimeSpan(0, 0, CurrentSecond)));
         }
 
         public void UnpackVertices(int second, PackingDirection direction)
@@ -66,15 +76,17 @@ namespace BeatMeGameModel.EditorModels
 
         public void ChangeStartTime(int newTime)
         {
+            PackVertices(Vertices, PackingDirection.Backward);
+            CurrentVertex = new BeatVertex(TimeSpan.MinValue, VertexType.None);
+            Save.Manifest.StartSecond = newTime;
+            CurrentSecond = newTime;
             var beatToDeletion = Save.Beat.Keys
                 .Where(time => time.TotalSeconds < Save.Manifest.StartSecond)
                 .ToList();
             foreach (var beat in beatToDeletion)
                 Save.Beat.Remove(beat);
             previousVertexStack.Clear();
-            PackVertices(Vertices, PackingDirection.Backward);
             UnpackVertices(newTime, PackingDirection.Forward);
-            Save.Manifest.StartSecond = newTime;
         }
 
         public int Millisecond2Position(int time)
@@ -282,6 +294,7 @@ namespace BeatMeGameModel.EditorModels
             else
             {
                 CurrentSecond = 0;
+                CurrentVertex = new BeatVertex(TimeSpan.MinValue, VertexType.None);
                 PackVertices(Vertices, PackingDirection.Backward);
                 previousVertexStack.Clear();
                 UnpackVertices(CurrentSecond, PackingDirection.Forward);

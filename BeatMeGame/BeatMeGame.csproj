@@ -92,6 +92,7 @@
     <Compile Include="EditorView\MusicEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="EditorView\SpectrogramWrapper.cs" />
     <Compile Include="EditorView\TimeSelectionDialogForm.cs">
       <SubType>Form</SubType>
     </Compile>

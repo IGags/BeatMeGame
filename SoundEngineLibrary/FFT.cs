@@ -88,6 +88,12 @@ namespace SoundEngineLibrary
             return beatBuffer.ToList();
         }
 
+        public double[][] GetFFTSecond(TimeSpan trackPosition)
+        {
+            GetFFTData(trackPosition);
+            return FFTBuffer.ToArray();
+        }
+
         public int ChooseElement(TimeSpan trackPosition)
         {
             var currentMillisecond = trackPosition.TotalSeconds % 1;

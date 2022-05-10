@@ -27,6 +27,7 @@ namespace BeatMeGame.EditorView
         private Panel beatCoefficientPanel;
         private FFTVertex flexibleVertexFFT;
         private BPMVertex flexibleBPMVertex;
+        private Panel spectrogramPanel;
         public MusicEditorForm(Form parent, LevelSave save)
         {
             MdiParent = parent;
@@ -91,7 +92,7 @@ namespace BeatMeGame.EditorView
                 Text = "Тип Анализа: " + (model.Save.Manifest.DetectionType == BeatDetectionType.FFT ? "FFT" : "BPM")
             };
 
-            var spectrogramPanel = new Panel()
+            spectrogramPanel = new Panel()
             {
                 BackColor = Color.Black
             };
@@ -263,7 +264,10 @@ namespace BeatMeGame.EditorView
                 InitializeAnalyzeState();
             };
 
+            spectrogramPanel.Resize += (sender, args) =>
+            {
 
+            };
 
             Controls.Add(trackPositionTrackBar);
             Controls.Add(trackPositionLabel);
