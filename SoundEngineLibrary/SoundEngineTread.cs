@@ -102,10 +102,10 @@ namespace SoundEngineLibrary
         /// <summary>
         /// Измерят время В СЕКУНДАХ текущего аудио потока
         /// </summary>
-        /// <returns>время В СЕКУНДАХ</returns>
-        public int MeasureTime()
+        /// <returns>время</returns>
+        public TimeSpan MeasureTime()
         {
-            return OutputDevice != null ? (int)CurrentTrack.CurrentTime.TotalSeconds : 0;
+            return OutputDevice != null ? CurrentTrack.CurrentTime : TimeSpan.Zero;
         }
 
         /// <summary>

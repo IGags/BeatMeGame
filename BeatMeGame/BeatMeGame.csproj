@@ -133,6 +133,9 @@
     <Compile Include="MenuView\RedirectionButton.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="MenuView\BoolButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MenuView\SettingsPanel.cs">

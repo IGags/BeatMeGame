@@ -14,7 +14,7 @@ namespace BeatMeGameModel.EditorModels
         Forward,
         Backward
     }
-    public class MusicEditorModel //TODO: баг с точкой старта
+    public class MusicEditorModel //TODO: подключить плейтест музыки
     {
         public SoundEngineTread WorkTread { get; }
         public LevelSave Save { get; }
@@ -26,6 +26,7 @@ namespace BeatMeGameModel.EditorModels
         private readonly Stack<BeatVertex> previousVertexStack = new Stack<BeatVertex>();
         private SpectrogramModel spectrogramModel;
         private Dictionary<TimeSpan, BeatVertex> alternativeType = new Dictionary<TimeSpan, BeatVertex>();
+        private BeatEngine engine;
         public MusicEditorModel(SoundEngineTread tread, LevelSave save)
         {
             WorkTread = tread;
@@ -34,6 +35,23 @@ namespace BeatMeGameModel.EditorModels
             CurrentSecond = save.Manifest.StartSecond;
             spectrogramModel = new SpectrogramModel(WorkTread.TrackFFT.LowEdge, WorkTread.TrackFFT.HighEdge,
                 WorkTread.TrackFFT.samplingFrequency);
+        }
+
+        public void StartPlayTest()
+        {
+            if(engine != null) return;
+            PackVertices(Vertices, PackingDirection.Backward);
+            engine = new BeatEngine(WorkTread, Save.Beat, Save.Manifest.DetectionType,
+                new TimeSpan(0, 0, 0, CurrentSecond));
+            engine.Play();
+        }
+
+        public void StopPlayTest()
+        {
+            if(engine == null) return;
+            engine.Pause();
+            engine = null;
+            UnpackVertices(CurrentSecond, PackingDirection.Forward);
         }
 
         public List<List<double>> GetSpectrogram(int lowFrequency, int highFrequency)

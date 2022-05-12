@@ -71,6 +71,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BeatEngine.cs" />
     <Compile Include="EditorModels\SpectrogramModel.cs" />
     <Compile Include="IOWorkers\BeatDetectionTypeExtensions.cs" />
     <Compile Include="BeatVertexes\BeatVertex.cs" />

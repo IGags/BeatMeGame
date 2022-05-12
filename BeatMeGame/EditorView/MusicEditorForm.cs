@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BeatMeGame.MenuView;
 using BeatMeGameModel;
 using BeatMeGameModel.BeatVertexes;
 using SoundEngineLibrary;
@@ -64,7 +65,7 @@ namespace BeatMeGame.EditorView
                 Text = startTime.ToString()
             };
 
-            var playTestButton = new Button()
+            var playTestButton = new BoolButton()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
@@ -131,6 +132,13 @@ namespace BeatMeGame.EditorView
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Сохранить и выйти"
+            };
+
+            var changePlaybackTypeButton = new Button()
+            {
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.DarkGray,
+                Text = "Слушать одну секунду"
             };
 
             increaseBeatSecondButton.Click += (sender, args) =>
@@ -212,6 +220,20 @@ namespace BeatMeGame.EditorView
                 analyzeTypeButton.Text += model.Save.Manifest.DetectionType == BeatDetectionType.FFT ? "FFT" : "BPM";
             };
 
+            playTestButton.Click += (sender, args) =>
+            {
+                if (playTestButton.IsActivated)
+                {
+                    model.StopPlayTest();
+                    playTestButton.Text = "Пуск";
+                }
+                else
+                {
+                    model.StartPlayTest();
+                    playTestButton.Text = "Стоп";
+                }
+            };
+
             Load += (sender, args) =>
             {
                 var marginRange = ClientSize.Width / 50;
@@ -249,6 +271,8 @@ namespace BeatMeGame.EditorView
                 beatCoefficientPanel.Location = FFTCoefficientPanel.Location;
                 saveAndExitButton.Size = buttonSize;
                 saveAndExitButton.Location = new Point(increaseBeatSecondButton.Location.X, 24 * ClientSize.Height / 25);
+                changePlaybackTypeButton.Size = buttonSize;
+                changePlaybackTypeButton.Location = new Point(playTestButton.Left, playTestButton.Bottom + marginRange);
             };
 
             FFTCoefficientPanel.Resize += (sender, args) =>
@@ -284,6 +308,7 @@ namespace BeatMeGame.EditorView
             Controls.Add(FFTCoefficientPanel);
             Controls.Add(beatCoefficientPanel);
             Controls.Add(saveAndExitButton);
+            Controls.Add(changePlaybackTypeButton);
         }
 
         private void VisualizeSpectrogram()
