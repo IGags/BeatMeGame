@@ -162,7 +162,7 @@ namespace BeatMeGameModel.EditorModels
             PackVertices(Vertices, PackingDirection.Forward);
             (alternativeType, Save.Beat) = (Save.Beat, alternativeType);
             previousVertexStack.Clear();
-            CurrentSecond = 0;
+            CurrentSecond = Save.Manifest.StartSecond;
             CurrentVertex = lastVertexPerFrame = new BeatVertex(TimeSpan.Zero, VertexType.None);
             Save.Manifest.DetectionType = Save.Manifest.DetectionType == BeatDetectionType.FFT 
                 ? BeatDetectionType.BPM 

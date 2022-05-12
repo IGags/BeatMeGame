@@ -28,10 +28,14 @@ namespace BeatMeGameModel.EditorModels
                 var frequenciesPerCell = frequencyLimit / count;
                 var lowLimitCell = LowFrequency / frequenciesPerCell;
                 var highLimitCell = HighFrequency / frequenciesPerCell;
-                var cells = fftFrame.Where(value => value >= lowLimitCell && value <= highLimitCell).ToList();
+                var cells = new List<double>();
+                for (int i = lowLimitCell; i < highLimitCell; i++)
+                {
+                    cells.Add(fftFrame[i]);
+                }
                 for (int i = 0; i < cells.Count; i++)
                 {
-                    if(selectedFrequencies.Count < i) selectedFrequencies.Add(new List<double>());
+                    if(selectedFrequencies.Count <= i) selectedFrequencies.Add(new List<double>());
                     selectedFrequencies[i].Add(cells[i]);
                 }
             }

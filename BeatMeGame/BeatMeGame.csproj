@@ -93,6 +93,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="EditorView\SpectrogramWrapper.cs" />
+    <Compile Include="EditorView\SpectrumCanvas.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="EditorView\TimeSelectionDialogForm.cs">
       <SubType>Form</SubType>
     </Compile>

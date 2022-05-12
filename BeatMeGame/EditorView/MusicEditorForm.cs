@@ -27,7 +27,7 @@ namespace BeatMeGame.EditorView
         private Panel beatCoefficientPanel;
         private FFTVertex flexibleVertexFFT;
         private BPMVertex flexibleBPMVertex;
-        private Panel spectrogramPanel;
+        private SpectrumCanvas spectrogramPanel;
         public MusicEditorForm(Form parent, LevelSave save)
         {
             MdiParent = parent;
@@ -92,7 +92,7 @@ namespace BeatMeGame.EditorView
                 Text = "Тип Анализа: " + (model.Save.Manifest.DetectionType == BeatDetectionType.FFT ? "FFT" : "BPM")
             };
 
-            spectrogramPanel = new Panel()
+            spectrogramPanel = new SpectrumCanvas()
             {
                 BackColor = Color.Black
             };
@@ -137,6 +137,7 @@ namespace BeatMeGame.EditorView
             {
                 model.GetNextSecond();
                 VisualizeModel();
+                VisualizeSpectrogram();
                 trackPositionTrackBar.Value = model.CurrentSecond;
             };
 
@@ -144,6 +145,7 @@ namespace BeatMeGame.EditorView
             {
                 model.GetPreviousSecond();
                 VisualizeModel();
+                VisualizeSpectrogram();
                 trackPositionTrackBar.Value = model.CurrentSecond;
             };
 
@@ -151,6 +153,7 @@ namespace BeatMeGame.EditorView
             {
                 model.GetSecondByTime(trackPositionTrackBar.Value);
                 VisualizeModel();
+                VisualizeSpectrogram();
             };
 
             saveButton.Click += (sender, args) =>
@@ -266,7 +269,6 @@ namespace BeatMeGame.EditorView
 
             spectrogramPanel.Resize += (sender, args) =>
             {
-
             };
 
             Controls.Add(trackPositionTrackBar);
@@ -284,6 +286,13 @@ namespace BeatMeGame.EditorView
             Controls.Add(saveAndExitButton);
         }
 
+        private void VisualizeSpectrogram()
+        {
+            if(flexibleVertexFFT == null) return;
+            var spectrogramData = model.GetSpectrogram(flexibleVertexFFT.BotFrequency, flexibleVertexFFT.TopFrequency);
+            spectrogramPanel.VisualizeSpectrogram(spectrogramData);
+        }
+
         private void InitializeAnalyzeState()
         {
             if (model.Save.Manifest.DetectionType == BeatDetectionType.FFT)
@@ -297,6 +306,7 @@ namespace BeatMeGame.EditorView
                 beatCoefficientPanel.Show();
             }
             VisualizeModel();
+            VisualizeSpectrogram();
         }
 
         private void InitializeBeatPanel()
@@ -339,8 +349,8 @@ namespace BeatMeGame.EditorView
                 Orientation = Orientation.Vertical,
                 TickStyle = TickStyle.None,
                 Maximum = model.WorkTread.TrackFFT.samplingFrequency / 2 - 1,
-                Minimum = 10,
-                Value = 10,
+                Minimum = 100,
+                Value = 300,
                 Size = sliderSize,
                 Location = new Point(margin, FFTCoefficientPanel.ClientSize.Height / 8)
             };
@@ -351,7 +361,7 @@ namespace BeatMeGame.EditorView
                 TickStyle = TickStyle.None,
                 Maximum = highFrequencySlider.Minimum - 1,
                 Minimum = 0,
-                Value = 0,
+                Value = 90,
                 Size = sliderSize,
                 Location = new Point(highFrequencySlider.Right + margin, FFTCoefficientPanel.ClientSize.Height / 8)
             };
@@ -450,6 +460,7 @@ namespace BeatMeGame.EditorView
                 var stringValue = highFrequencySlider.Value.ToString();
                 bottomMaximumLabel.Text = stringValue;
                 highBorder.Text = stringValue;
+                VisualizeSpectrogram();
             };
 
             lowFrequencySlider.ValueChanged += (sender, args) =>
@@ -459,6 +470,7 @@ namespace BeatMeGame.EditorView
                 var stringValue = lowFrequencySlider.Value.ToString();
                 lowBorder.Text = stringValue;
                 topMinimumLabel.Text = stringValue;
+                VisualizeSpectrogram();
             };
 
             thresholdValueSlider.ValueChanged += (sender, args) =>
@@ -467,6 +479,7 @@ namespace BeatMeGame.EditorView
                 thresholdValue.Text = ((double)thresholdValueSlider.Value / 100).ToString(CultureInfo.InvariantCulture);
             };
 
+            VisualizeSpectrogram();
             FFTCoefficientPanel.Controls.Add(highFrequencySlider);
             FFTCoefficientPanel.Controls.Add(lowFrequencySlider);
             FFTCoefficientPanel.Controls.Add(thresholdValueSlider);
@@ -522,7 +535,9 @@ namespace BeatMeGame.EditorView
             };
 
             flexibleBPMVertex = new BPMVertex(TimeSpan.MaxValue, VertexType.BPM, 0.0);
+            flexibleVertexFFT = new FFTVertex(TimeSpan.Zero, VertexType.FFT, 300, 150, 0);
 
+            VisualizeSpectrogram();
             bpmTrackBar.ValueChanged += (sender, args) =>
             {
                 var newValue = (double)bpmTrackBar.Value / 10;
