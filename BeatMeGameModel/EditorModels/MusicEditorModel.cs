@@ -42,7 +42,7 @@ namespace BeatMeGameModel.EditorModels
             if(engine != null) return;
             PackVertices(Vertices, PackingDirection.Backward);
             engine = new BeatEngine(WorkTread, Save.Beat, Save.Manifest.DetectionType,
-                new TimeSpan(0, 0, 0, (CurrentSecond * FramesPerSecond  + 1) * FFT.FFTSize / WorkTread.TrackFFT.samplingFrequency));
+                new TimeSpan(0, 0, 0, CurrentSecond));
             engine.OnBeat += onBeatAction;
             engine.Clear += clearAction;
             engine.Shutdown += shutdownAction;

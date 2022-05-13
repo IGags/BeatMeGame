@@ -15,13 +15,13 @@ namespace BeatMeGameModel
     {
         public event Action OnBeat;
         public event Action Clear;
-        public event Action Shutdown; 
-        public Timer timeOutShutdownTimer { get; } = new Timer() { Interval = 1000, Enabled = false };
+        public event Action Shutdown;
         private readonly Queue<BeatVertex> vertexQueue = new Queue<BeatVertex>();
         private readonly SoundEngineTread workTread;
         private readonly int measureDelay;
         private Thread asyncEventInvoker;
         private readonly BeatDetectionType detectionType;
+        private BeatVertex lastVertex;
 
         public BeatEngine(SoundEngineTread workTread, Dictionary<TimeSpan, BeatVertex> beat, BeatDetectionType detectionType, TimeSpan position)
         {
@@ -62,14 +62,22 @@ namespace BeatMeGameModel
 
             while (vertexQueue.Any() && vertexQueue.Peek().Time < position)
             {
-                vertexQueue.Dequeue();
+                if(vertexQueue.Peek().Type == VertexType.FFT 
+                   || vertexQueue.Peek().Type == VertexType.BPM) lastVertex = vertexQueue.Dequeue();
             }
         }
 
         private void ParseFFTQueue()
         {
+            
             while (true)
             {
+                if (lastVertex != null)
+                {
+                    workTread.TrackFFT.HighEdge = ((FFTVertex)lastVertex).TopFrequency;
+                    workTread.TrackFFT.LowEdge = ((FFTVertex)lastVertex).BotFrequency;
+                    workTread.TrackFFT.ThresholdValue = ((FFTVertex)lastVertex).ThresholdValue;
+                }
                 Clear();
                 var isDeletion = false;
                 while (vertexQueue.Any() && vertexQueue.Peek().Time < workTread.MeasureTime())
@@ -104,6 +112,10 @@ namespace BeatMeGameModel
         private void ParseBPMQueue()
         {
             var bpm = 0d;
+            if (lastVertex != null)
+            {
+                bpm = ((BPMVertex)lastVertex).BPM;
+            }
             var beatCount = 0;
             var startTime = TimeSpan.Zero;
             while (true)
@@ -119,6 +131,7 @@ namespace BeatMeGameModel
                             bpm = ((BPMVertex)vertex).BPM;
                             startTime = vertex.Time;
                             beatCount = 0;
+                            OnBeat();
                             break;
                         case VertexType.Artificial:
                             OnBeat();
@@ -147,7 +160,7 @@ namespace BeatMeGameModel
 
         private async Task WaitOneSecondAsync()
         {
-            var task = new Task(() => Thread.Sleep(1200));
+            var task = new Task(() => Thread.Sleep(1150));
             task.Start();
             await task;
             Shutdown();
