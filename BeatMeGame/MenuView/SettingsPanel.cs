@@ -1,22 +1,23 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 using System.Windows.Forms;
+using BeatMeGame.Interfaces;
+using BeatMeGame.MenuView;
 
 namespace BeatMeGame
 {
-    class SettingsForm : Form
+    class SettingsPanel : Panel
     {
         private Settings settings;
-        public SettingsForm(Form parent)
+        public SettingsPanel(Form parent)
         {
             Initialize(parent);
         }
 
         private void Initialize(Form parent)
         {
-            MdiParent = parent;
-            FormBorderStyle = FormBorderStyle.None;
             BackColor = Color.DarkGray;
-            settings = ((IMainWindow)parent).GetSettings();
+            settings = ((IMainWindow)(parent.MdiParent)).GetSettings();
             var font = new Font(FontFamily.GenericMonospace, 12);
 
             var headerLabel = new Label
@@ -26,7 +27,7 @@ namespace BeatMeGame
                 TextAlign = ContentAlignment.TopCenter
             };
 
-            Button backButton = new Button()
+            var backButton = new RedirectionButton()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
@@ -35,10 +36,10 @@ namespace BeatMeGame
 
             backButton.Click += (sender, args) =>
             {
-                var creator = (IFormCreator)parent;
-                ((IMainWindow)parent).SetSettings(settings);
-                creator.CreateChildForm(new MenuListForm(parent));
-                Close();
+                ((IStateEditor)parent).StateMachine.ChangeState((RedirectionButton)backButton);
+                var setter = (IMainWindow)(parent.MdiParent);
+                setter.SetSettings(settings);
+                Dispose();
             };
 
             var musicLabel = new Label
@@ -117,21 +118,15 @@ namespace BeatMeGame
                 settings.ScreenState = windowStyleCheckBox.Checked ? ScreenState.FullScreen : ScreenState.None;
             };
 
-            Load += (sender, args) =>
-            {
-                OnSizeChanged(args);
-            };
-
-            MdiParent.SizeChanged += (sender, args) =>
+            parent.SizeChanged += (sender, args) =>
             {
                 OnSizeChanged(args);
             };
 
             SizeChanged += (sender, args) =>
             {
-                if (MdiParent == null) return;
-                Location = new Point(MdiParent.ClientSize.Width / 2 - ClientSize.Width / 2, MdiParent.ClientSize.Height / 4);
-                Size = new Size(MdiParent.ClientSize.Width / 4, MdiParent.ClientSize.Height / 2);
+                Location = new Point(parent.ClientSize.Width / 2 - ClientSize.Width / 2, parent.ClientSize.Height / 4);
+                Size = new Size(parent.ClientSize.Width / 4, parent.ClientSize.Height / 2);
                 musicVolume.Location = new Point(5 * ClientSize.Width / 12, ClientSize.Height / 6);
                 musicVolume.Size = new Size(ClientSize.Width / 2, musicVolume.Size.Height);
                 sfxVolume.Location = new Point(5 * ClientSize.Width / 12, musicVolume.Location.Y + musicVolume.Size.Height);
@@ -164,6 +159,7 @@ namespace BeatMeGame
             Controls.Add(resolutionLabel);
             Controls.Add(windowStyleLabel);
             Controls.Add(headerLabel);
+            OnSizeChanged(EventArgs.Empty);
         }
     }
 }

@@ -5,17 +5,12 @@ using BeatMeGameModel.IOWorkers;
 
 namespace BeatMeGame.EditorView
 {
-    public class VertexTypeDialogForm : Form
+    public class VertexTypeDialogForm : EditorDialogForm
     {
         public VertexType OutType { get; private set; }
 
-        public VertexTypeDialogForm(BeatDetectionType type, Form parent)
+        public VertexTypeDialogForm(BeatDetectionType type, Form parent) : base(parent)
         {
-            Size = new Size(parent.ClientSize.Width / 4, parent.ClientSize.Height / 4);
-            Location = new Point(parent.ClientSize.Width / 2 - ClientSize.Width / 2,
-                parent.ClientSize.Height / 2 - ClientSize.Height / 2);
-            BackColor = Color.DarkGray;
-            FormBorderStyle = FormBorderStyle.None;
             var buttonSize = new Size(3 * ClientSize.Width / 4, ClientSize.Height / 4);
             var buttonLocationConstant = new Point(Size.Width / 2 - buttonSize.Width / 2,
                 ClientSize.Width / 8);

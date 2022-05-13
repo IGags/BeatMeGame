@@ -5,12 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BeatMeGame.Interfaces;
+using BeatMeGame.MenuView;
 
 namespace BeatMeGame
 {
-    public class MenuListForm : Form
+    public class MenuListPanel : Panel
     {
-        public MenuListForm(Form parent)
+        public MenuListPanel(Form parent)
         {
             SetStyle(ControlStyles.SupportsTransparentBackColor, true);
             Initialize(parent);
@@ -18,24 +20,23 @@ namespace BeatMeGame
 
         private void Initialize(Form parent)
         {
-            FormBorderStyle = FormBorderStyle.None;
-            MdiParent = parent;
+            BorderStyle = BorderStyle.None;
 
-            var startGameButton = new Button
+            var startGameButton = new RedirectionButton(State.Play)
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Играть"
             };
 
-            var redactorButton = new Button
+            var redactorButton = new RedirectionButton(State.Editor)
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Редактор"
             };
 
-            var settingsButton = new Button
+            var settingsButton = new RedirectionButton(State.Settings)
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
@@ -51,39 +52,31 @@ namespace BeatMeGame
 
             exitButton.Click += (sender, args) =>
             {
-                var terminatable = (ITerminatable)parent;
+                var terminatable = (ITerminatable)parent.MdiParent;
                 terminatable.TerminateForm();
             };
 
             settingsButton.Click += (sender, args) =>
             {
-                var creator = (IFormCreator)parent;
-                creator.CreateChildForm(new SettingsForm(parent));
-                Close();
+                ((IStateEditor)parent).StateMachine.ChangeState(settingsButton);
+                Dispose();
             };
 
             redactorButton.Click += (sender, args) =>
             {
-                var creator = (IFormCreator)parent;
-                creator.CreateChildForm(new MenuRedactorForm(parent));
-                Close();
+                ((IStateEditor)parent).StateMachine.ChangeState(redactorButton);
+                Dispose();
             };
 
-            Load += (sender, args) =>
-            {
-                OnSizeChanged(args);
-            };
-
-            MdiParent.SizeChanged += (sender, args) =>
+            parent.SizeChanged += (sender, args) =>
             {
                 OnSizeChanged(args);
             };
 
             SizeChanged += (sender, args) =>
             {
-                if (MdiParent == null) return;
-                Location = new Point(MdiParent.ClientSize.Width / 2 - ClientSize.Width / 2, MdiParent.ClientSize.Height / 4);
-                Size = new Size(MdiParent.ClientSize.Width / 4, MdiParent.ClientSize.Height / 2);
+                Location = new Point(parent.ClientSize.Width / 2 - ClientSize.Width / 2, parent.ClientSize.Height / 4);
+                Size = new Size(parent.ClientSize.Width / 4, parent.ClientSize.Height / 2);
                 startGameButton.Size = new Size(Size.Width, Size.Height / 4);
                 startGameButton.Location = new Point(0, 0);
                 redactorButton.Size = new Size(Size.Width, Size.Height / 4);
@@ -98,6 +91,7 @@ namespace BeatMeGame
             Controls.Add(redactorButton);
             Controls.Add(settingsButton);
             Controls.Add(exitButton);
+            OnSizeChanged(EventArgs.Empty);
         }
     }
 }

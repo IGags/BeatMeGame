@@ -7,7 +7,6 @@ using SoundEngineLibrary;
 using BeatMeGameModel.BeatVertexes;
 using BeatMeGameModel.IOWorkers;
 
-//ToDo: унифицировать методы работы с цепными анализаторами.
 namespace BeatMeGameModel.EditorModels
 {
     public enum PackingDirection
@@ -15,7 +14,7 @@ namespace BeatMeGameModel.EditorModels
         Forward,
         Backward
     }
-    public class MusicEditorModel
+    public class MusicEditorModel //TODO: подключить плейтест музыки
     {
         public SoundEngineTread WorkTread { get; }
         public LevelSave Save { get; }
@@ -25,14 +24,45 @@ namespace BeatMeGameModel.EditorModels
         private BeatVertex CurrentVertex { get; set; } = new BeatVertex(TimeSpan.Zero, VertexType.None);
         private BeatVertex lastVertexPerFrame = new BeatVertex(TimeSpan.Zero, VertexType.None);
         private readonly Stack<BeatVertex> previousVertexStack = new Stack<BeatVertex>();
-
+        private SpectrogramModel spectrogramModel;
         private Dictionary<TimeSpan, BeatVertex> alternativeType = new Dictionary<TimeSpan, BeatVertex>();
+        private BeatEngine engine;
         public MusicEditorModel(SoundEngineTread tread, LevelSave save)
         {
             WorkTread = tread;
             Save = save;
             FramesPerSecond = WorkTread.TrackFFT.samplingFrequency / FFT.FFTSize;
             CurrentSecond = save.Manifest.StartSecond;
+            spectrogramModel = new SpectrogramModel(WorkTread.TrackFFT.LowEdge, WorkTread.TrackFFT.HighEdge,
+                WorkTread.TrackFFT.samplingFrequency);
+        }
+
+        public void StartPlayTest(Action onBeatAction, Action clearAction)
+        {
+            if(engine != null) return;
+            PackVertices(Vertices, PackingDirection.Backward);
+            engine = new BeatEngine(WorkTread, Save.Beat, Save.Manifest.DetectionType,
+                new TimeSpan(0, 0, 0, (CurrentSecond * FramesPerSecond  + 1) * FFT.FFTSize / WorkTread.TrackFFT.samplingFrequency));
+            engine.OnBeat += onBeatAction;
+            engine.Clear += clearAction;
+            engine.Play();
+        }
+
+        public void StopPlayTest()
+        {
+            if(engine == null) return;
+            engine.Pause();
+            engine = null;
+            WorkTread.ChangePlayingPosition(CurrentSecond);
+            UnpackVertices(CurrentSecond, PackingDirection.Forward);
+        }
+
+        public List<List<double>> GetSpectrogram(int lowFrequency, int highFrequency)
+        {
+            spectrogramModel.HighFrequency = highFrequency;
+            spectrogramModel.LowFrequency = lowFrequency;
+            return spectrogramModel.GetNormalizedSpectrogramMap(
+                WorkTread.TrackFFT.GetFFTSecond(new TimeSpan(0, 0, CurrentSecond)));
         }
 
         public void UnpackVertices(int second, PackingDirection direction)
@@ -58,6 +88,26 @@ namespace BeatMeGameModel.EditorModels
                 return (Millisecond2Position(millisecond), value.Item2);
             }).ToDictionary(value => value.Item1, value => value.Item2);
             Vertices = UnpackChainVertices(ms, direction);
+        }
+
+        public TimeSpan GetTimeLimit()
+        {
+            return WorkTread?.MaxSongDuration ?? TimeSpan.Zero;
+        }
+
+        public void ChangeStartTime(int newTime)
+        {
+            PackVertices(Vertices, PackingDirection.Backward);
+            CurrentVertex = new BeatVertex(TimeSpan.MinValue, VertexType.None);
+            Save.Manifest.StartSecond = newTime;
+            CurrentSecond = newTime;
+            var beatToDeletion = Save.Beat.Keys
+                .Where(time => time.TotalSeconds < Save.Manifest.StartSecond)
+                .ToList();
+            foreach (var beat in beatToDeletion)
+                Save.Beat.Remove(beat);
+            previousVertexStack.Clear();
+            UnpackVertices(newTime, PackingDirection.Forward);
         }
 
         public int Millisecond2Position(int time)
@@ -133,7 +183,7 @@ namespace BeatMeGameModel.EditorModels
             PackVertices(Vertices, PackingDirection.Forward);
             (alternativeType, Save.Beat) = (Save.Beat, alternativeType);
             previousVertexStack.Clear();
-            CurrentSecond = 0;
+            CurrentSecond = Save.Manifest.StartSecond;
             CurrentVertex = lastVertexPerFrame = new BeatVertex(TimeSpan.Zero, VertexType.None);
             Save.Manifest.DetectionType = Save.Manifest.DetectionType == BeatDetectionType.FFT 
                 ? BeatDetectionType.BPM 
@@ -245,7 +295,7 @@ namespace BeatMeGameModel.EditorModels
 
         public void GetPreviousSecond()
         {
-            if(CurrentSecond == 0) return;
+            if(CurrentSecond == Save.Manifest.StartSecond) return;
             CurrentSecond--;
             PackVertices(Vertices, PackingDirection.Backward);
             UnpackVertices(CurrentSecond, PackingDirection.Backward);
@@ -265,6 +315,7 @@ namespace BeatMeGameModel.EditorModels
             else
             {
                 CurrentSecond = 0;
+                CurrentVertex = new BeatVertex(TimeSpan.MinValue, VertexType.None);
                 PackVertices(Vertices, PackingDirection.Backward);
                 previousVertexStack.Clear();
                 UnpackVertices(CurrentSecond, PackingDirection.Forward);
@@ -273,6 +324,13 @@ namespace BeatMeGameModel.EditorModels
                     GetNextSecond();
                 }
             }
+        }
+
+        public void SaveModel()
+        {
+            PackVertices(Vertices, PackingDirection.Backward);
+            LevelSavePacker.PackSave(Save);
+            UnpackVertices(CurrentSecond, PackingDirection.Forward);
         }
 
         private void ClearDeletionVertexes()

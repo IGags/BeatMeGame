@@ -38,6 +38,12 @@ namespace SoundEngineLibrary
             filePath = fullFilePath;
         }
 
+        public void Dispose()
+        {
+            file.Dispose();
+            decompressor.Dispose();
+        }
+
         public double[] GetFFTData(TimeSpan trackPosition)
         {
             if ((int)LastQueryTime.TotalSeconds != (int)trackPosition.TotalSeconds)
@@ -80,6 +86,12 @@ namespace SoundEngineLibrary
             GetFFTData(trackPosition);
             ComputeBeat();
             return beatBuffer.ToList();
+        }
+
+        public double[][] GetFFTSecond(TimeSpan trackPosition)
+        {
+            GetFFTData(trackPosition);
+            return FFTBuffer.ToArray();
         }
 
         public int ChooseElement(TimeSpan trackPosition)

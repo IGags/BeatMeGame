@@ -24,7 +24,7 @@ namespace BeatMeGame.EditorView
         {
             DoubleBuffered = true;
             BackColor = Color.Black;
-            this.parent = MdiParent = parent;
+            this.parent = MdiParent = parent.MdiParent;
             FormBorderStyle = FormBorderStyle.None;
 
             var loadingLabel = new Label()
@@ -84,8 +84,8 @@ namespace BeatMeGame.EditorView
         private void OpenEditorForm(LevelSave saveData)
         {
             var creator = (IMainWindow)MdiParent;
-            Close();
             creator.RunEditor(saveData);
+            Close();
             Dispose();
         }
     }

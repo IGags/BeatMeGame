@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BeatMeGame.MenuView;
 using BeatMeGameModel;
 using BeatMeGameModel.BeatVertexes;
 using SoundEngineLibrary;
@@ -19,12 +20,22 @@ namespace BeatMeGame.EditorView
     public class MusicEditorForm : Form
     {
         private readonly MusicEditorModel model;
+        private readonly string treadName;
+        private readonly SoundEngine engine;
         private List<BeatButton> beatButtons;
         private Panel beatStatusPanel;
         private Panel FFTCoefficientPanel;
         private Panel beatCoefficientPanel;
         private FFTVertex flexibleVertexFFT;
         private BPMVertex flexibleBPMVertex;
+        private SpectrumCanvas spectrogramPanel;
+        private Button saveAndExitButton;
+        private Button startSettingButton;
+        private Button increaseBeatSecondButton;
+        private Button decreaseBeatSecondButton;
+        private TrackBar trackPositionTrackBar;
+        private Button saveButton;
+
         public MusicEditorForm(Form parent, LevelSave save)
         {
             MdiParent = parent;
@@ -33,6 +44,8 @@ namespace BeatMeGame.EditorView
             var treadName = soundTestEngine.CreateTread(ThreadOptions.StaticThread,
                 "Levels" + "\\" + save.LevelName + "\\" + save.Manifest.SongName, FFTExistance.Exist);
             var workTread = soundTestEngine.GetTread(treadName);
+            this.treadName = treadName;
+            engine = soundTestEngine;
             workTread.ChangePlaybackState();
             model = new MusicEditorModel(workTread, save);
             Initialize();
@@ -43,9 +56,11 @@ namespace BeatMeGame.EditorView
             FormBorderStyle = FormBorderStyle.None;
             BackColor = Color.DarkGray;
             DoubleBuffered = true;
+            var startTime = new TimeSpan(0, 0, model.Save.Manifest.StartSecond);
 
-            var trackPositionTrackBar = new TrackBar()
+            trackPositionTrackBar = new TrackBar()
             {
+                Minimum = (int)startTime.TotalSeconds,
                 TickStyle = TickStyle.None,
                 Maximum = (int)model.WorkTread.MaxSongDuration.TotalSeconds
             };
@@ -54,24 +69,24 @@ namespace BeatMeGame.EditorView
             {
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font(FontFamily.GenericSansSerif, 12),
-                Text = "00:00"
+                Text = startTime.ToString()
             };
 
-            var playTestButton = new Button()
+            var playTestButton = new BoolButton()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Пуск"
             };
 
-            var startSettingButton = new Button()
+            startSettingButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Поставить время старта"
             };
 
-            var saveButton = new Button()
+            saveButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
@@ -82,10 +97,10 @@ namespace BeatMeGame.EditorView
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
-                Text = "Тип Анализа: FFT"
+                Text = "Тип Анализа: " + (model.Save.Manifest.DetectionType == BeatDetectionType.FFT ? "FFT" : "BPM")
             };
 
-            var spectrogramPanel = new Panel()
+            spectrogramPanel = new SpectrumCanvas()
             {
                 BackColor = Color.Black
             };
@@ -100,14 +115,14 @@ namespace BeatMeGame.EditorView
                 BackColor = Color.Gray
             };
 
-            var decreaseBeatSecondButton = new Button()
+            decreaseBeatSecondButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Назад"
             };
 
-            var increaseBeatSecondButton = new Button()
+            increaseBeatSecondButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
@@ -119,10 +134,30 @@ namespace BeatMeGame.EditorView
                 BackColor = Color.Gray,
             };
 
+            saveAndExitButton = new Button()
+            {
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.DarkGray,
+                Text = "Сохранить и выйти"
+            };
+
+            var oneSecondPlayTestButton = new BoolButton()
+            {
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.DarkGray,
+                Text = "Слушать одну секунду"
+            };
+
+            var beatIndicationPanel = new BeatIndicatorPanel()
+            {
+                BackColor = Color.DarkGray
+            };
+
             increaseBeatSecondButton.Click += (sender, args) =>
             {
                 model.GetNextSecond();
                 VisualizeModel();
+                VisualizeSpectrogram();
                 trackPositionTrackBar.Value = model.CurrentSecond;
             };
 
@@ -130,6 +165,7 @@ namespace BeatMeGame.EditorView
             {
                 model.GetPreviousSecond();
                 VisualizeModel();
+                VisualizeSpectrogram();
                 trackPositionTrackBar.Value = model.CurrentSecond;
             };
 
@@ -137,13 +173,46 @@ namespace BeatMeGame.EditorView
             {
                 model.GetSecondByTime(trackPositionTrackBar.Value);
                 VisualizeModel();
+                VisualizeSpectrogram();
             };
 
-            saveButton.Click += (sender, args) =>
+            saveButton.Click += (sender, args) => { model.SaveModel(); };
+
+            startSettingButton.Click += (sender, args) =>
             {
-                model.PackVertices(model.Vertices, PackingDirection.Backward);
-                LevelSavePacker.PackSave(model.Save);
-                model.UnpackVertices(model.CurrentSecond, PackingDirection.Forward);
+                var dialog = new TimeSelectionDialogForm(this, model.GetTimeLimit(), model.Save.Manifest.StartSecond);
+                if (dialog.ShowDialog() != DialogResult.OK) return;
+                trackPositionTrackBar.Minimum = dialog.StartSecond;
+                trackPositionTrackBar.Value = dialog.StartSecond;
+                trackPositionLabel.Text = new TimeSpan(0, 0, dialog.StartSecond).ToString();
+                model.ChangeStartTime(dialog.StartSecond);
+                VisualizeModel();
+            };
+
+            saveAndExitButton.Click += (sender, args) =>
+            {
+                var dialog = new EditorExitDialogForm(this);
+                var result = dialog.ShowDialog();
+                switch (result)
+                {
+                    case DialogResult.OK:
+                    {
+                        model.SaveModel();
+                        engine.TerminateTread(treadName);
+                        var creator = (IFormCreator)MdiParent;
+                        creator.ReestablishScene();
+                        Close();
+                        break;
+                    }
+                    case DialogResult.Yes:
+                    {
+                        engine.TerminateTread(treadName);
+                        var creator = (IFormCreator)MdiParent;
+                        creator.ReestablishScene();
+                        Close();
+                        break;
+                    }
+                }
             };
 
             trackPositionTrackBar.ValueChanged += (sender, args) =>
@@ -155,35 +224,70 @@ namespace BeatMeGame.EditorView
             {
                 model.ChangeAnalyzeType();
                 InitializeAnalyzeState();
-                trackPositionTrackBar.Value = 0;
+                trackPositionTrackBar.Value = model.Save.Manifest.StartSecond;
                 analyzeTypeButton.Text = @"Тип анализа ";
                 analyzeTypeButton.Text += model.Save.Manifest.DetectionType == BeatDetectionType.FFT ? "FFT" : "BPM";
             };
 
+            playTestButton.Click += (sender, args) =>
+            {
+                if (playTestButton.IsActivated)
+                {
+                    model.StopPlayTest();
+                    UnfreezeInterface();
+                    oneSecondPlayTestButton.Enabled = true;
+                    playTestButton.Text = "Пуск";
+                }
+                else
+                {
+                    model.StartPlayTest(beatIndicationPanel.BeatDetected, beatIndicationPanel.ToDefault);
+                    FreezeInterface();
+                    oneSecondPlayTestButton.Enabled = false;
+                    playTestButton.Text = "Стоп";
+                }
+            };
+
+            oneSecondPlayTestButton.Click += (sender, args) =>
+            {
+                if (playTestButton.IsActivated)
+                {
+                    model.StopPlayTest();
+                    UnfreezeInterface();
+                    playTestButton.Enabled = true;
+                }
+                else
+                {
+                    model.StartPlayTest(beatIndicationPanel.BeatDetected, beatIndicationPanel.ToDefault);
+                    FreezeInterface();
+                    playTestButton.Enabled = false;
+                }
+            };
+
             Load += (sender, args) =>
             {
-                var marginRange = ClientSize.Width / 50; 
+                var marginRange = ClientSize.Width / 50;
                 Size = new Size(MdiParent.ClientSize.Width - 4, MdiParent.ClientSize.Height - 4);
                 Location = Parent.Location;
+                var buttonSize = new Size(ClientSize.Width / 18, ClientSize.Height / 30);
                 trackPositionTrackBar.Size = new Size(3 * ClientSize.Width / 8, trackPositionTrackBar.Height);
                 trackPositionTrackBar.Location = new Point(ClientSize.Width / 16, 5 * ClientSize.Height / 6);
                 trackPositionLabel.Size = new Size(ClientSize.Width / 20, ClientSize.Height / 40);
                 trackPositionLabel.Location = new Point(trackPositionTrackBar.Right, trackPositionTrackBar.Location.Y);
-                playTestButton.Size = new Size(ClientSize.Width / 18, ClientSize.Height / 30);
+                playTestButton.Size = buttonSize;
                 playTestButton.Location = new Point(trackPositionLabel.Right + marginRange, trackPositionLabel.Location.Y);
-                startSettingButton.Size = playTestButton.Size;
+                startSettingButton.Size = buttonSize;
                 startSettingButton.Location = new Point(playTestButton.Right + marginRange,
                     trackPositionLabel.Location.Y);
-                saveButton.Size = playTestButton.Size;
+                saveButton.Size = buttonSize;
                 saveButton.Location = new Point(startSettingButton.Right + marginRange, trackPositionLabel.Location.Y);
-                analyzeTypeButton.Size = playTestButton.Size;
+                analyzeTypeButton.Size = buttonSize;
                 analyzeTypeButton.Location = new Point(saveButton.Right + marginRange, trackPositionLabel.Location.Y);
                 spectrogramPanel.Size = new Size(3 * ClientSize.Width / 4, ClientSize.Height / 2);
                 spectrogramPanel.Location = new Point(ClientSize.Width / 12, ClientSize.Height / 12);
                 beatStatusPanel.Size = new Size(spectrogramPanel.Width, ClientSize.Height / 18);
                 beatStatusPanel.Location =
                     new Point(spectrogramPanel.Left, spectrogramPanel.Bottom + ClientSize.Height / 12);
-                decreaseBeatSecondButton.Size = analyzeTypeButton.Size;
+                decreaseBeatSecondButton.Size = buttonSize;
                 decreaseBeatSecondButton.Location = new Point(beatStatusPanel.Left - decreaseBeatSecondButton.Width - marginRange,
                     beatStatusPanel.Top);
                 increaseBeatSecondButton.Size = decreaseBeatSecondButton.Size;
@@ -194,6 +298,12 @@ namespace BeatMeGame.EditorView
                 FFTCoefficientPanel.Location = new Point(spectrogramPanel.Right + marginRange, spectrogramPanel.Top);
                 beatCoefficientPanel.Size = FFTCoefficientPanel.Size;
                 beatCoefficientPanel.Location = FFTCoefficientPanel.Location;
+                saveAndExitButton.Size = buttonSize;
+                saveAndExitButton.Location = new Point(increaseBeatSecondButton.Location.X, 24 * ClientSize.Height / 25);
+                oneSecondPlayTestButton.Size = buttonSize;
+                oneSecondPlayTestButton.Location = new Point(playTestButton.Left, playTestButton.Bottom + marginRange);
+                beatIndicationPanel.Size = new Size(ClientSize.Width / 8, ClientSize.Width / 8);
+                beatIndicationPanel.Location = new Point(saveAndExitButton.Left, beatStatusPanel.Bottom);
             };
 
             FFTCoefficientPanel.Resize += (sender, args) =>
@@ -212,7 +322,9 @@ namespace BeatMeGame.EditorView
                 InitializeAnalyzeState();
             };
 
-
+            spectrogramPanel.Resize += (sender, args) =>
+            {
+            };
 
             Controls.Add(trackPositionTrackBar);
             Controls.Add(trackPositionLabel);
@@ -226,6 +338,38 @@ namespace BeatMeGame.EditorView
             Controls.Add(increaseBeatSecondButton);
             Controls.Add(FFTCoefficientPanel);
             Controls.Add(beatCoefficientPanel);
+            Controls.Add(saveAndExitButton);
+            Controls.Add(oneSecondPlayTestButton);
+            Controls.Add(beatIndicationPanel);
+        }
+
+        private void FreezeInterface()
+        {
+            beatStatusPanel.Enabled = false;
+            saveAndExitButton.Enabled = false;
+            startSettingButton.Enabled = false;
+            increaseBeatSecondButton.Enabled = false;
+            decreaseBeatSecondButton.Enabled = false;
+            trackPositionTrackBar.Enabled = false;
+            saveButton.Enabled = false;
+        }
+
+        private void UnfreezeInterface()
+        {
+            beatStatusPanel.Enabled = true;
+            saveAndExitButton.Enabled = true;
+            startSettingButton.Enabled = true;
+            increaseBeatSecondButton.Enabled = true;
+            decreaseBeatSecondButton.Enabled = true;
+            trackPositionTrackBar.Enabled = true;
+            saveButton.Enabled = true;
+        }
+
+        private void VisualizeSpectrogram()
+        {
+            if(flexibleVertexFFT == null) return;
+            var spectrogramData = model.GetSpectrogram(flexibleVertexFFT.BotFrequency, flexibleVertexFFT.TopFrequency);
+            spectrogramPanel.VisualizeSpectrogram(spectrogramData);
         }
 
         private void InitializeAnalyzeState()
@@ -241,6 +385,7 @@ namespace BeatMeGame.EditorView
                 beatCoefficientPanel.Show();
             }
             VisualizeModel();
+            VisualizeSpectrogram();
         }
 
         private void InitializeBeatPanel()
@@ -283,8 +428,8 @@ namespace BeatMeGame.EditorView
                 Orientation = Orientation.Vertical,
                 TickStyle = TickStyle.None,
                 Maximum = model.WorkTread.TrackFFT.samplingFrequency / 2 - 1,
-                Minimum = 10,
-                Value = 10,
+                Minimum = 100,
+                Value = 300,
                 Size = sliderSize,
                 Location = new Point(margin, FFTCoefficientPanel.ClientSize.Height / 8)
             };
@@ -295,7 +440,7 @@ namespace BeatMeGame.EditorView
                 TickStyle = TickStyle.None,
                 Maximum = highFrequencySlider.Minimum - 1,
                 Minimum = 0,
-                Value = 0,
+                Value = 90,
                 Size = sliderSize,
                 Location = new Point(highFrequencySlider.Right + margin, FFTCoefficientPanel.ClientSize.Height / 8)
             };
@@ -394,6 +539,7 @@ namespace BeatMeGame.EditorView
                 var stringValue = highFrequencySlider.Value.ToString();
                 bottomMaximumLabel.Text = stringValue;
                 highBorder.Text = stringValue;
+                VisualizeSpectrogram();
             };
 
             lowFrequencySlider.ValueChanged += (sender, args) =>
@@ -403,6 +549,7 @@ namespace BeatMeGame.EditorView
                 var stringValue = lowFrequencySlider.Value.ToString();
                 lowBorder.Text = stringValue;
                 topMinimumLabel.Text = stringValue;
+                VisualizeSpectrogram();
             };
 
             thresholdValueSlider.ValueChanged += (sender, args) =>
@@ -411,6 +558,7 @@ namespace BeatMeGame.EditorView
                 thresholdValue.Text = ((double)thresholdValueSlider.Value / 100).ToString(CultureInfo.InvariantCulture);
             };
 
+            VisualizeSpectrogram();
             FFTCoefficientPanel.Controls.Add(highFrequencySlider);
             FFTCoefficientPanel.Controls.Add(lowFrequencySlider);
             FFTCoefficientPanel.Controls.Add(thresholdValueSlider);
@@ -466,7 +614,9 @@ namespace BeatMeGame.EditorView
             };
 
             flexibleBPMVertex = new BPMVertex(TimeSpan.MaxValue, VertexType.BPM, 0.0);
+            flexibleVertexFFT = new FFTVertex(TimeSpan.Zero, VertexType.FFT, 300, 150, 0);
 
+            VisualizeSpectrogram();
             bpmTrackBar.ValueChanged += (sender, args) =>
             {
                 var newValue = (double)bpmTrackBar.Value / 10;
