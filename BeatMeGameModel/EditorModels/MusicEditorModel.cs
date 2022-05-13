@@ -37,7 +37,7 @@ namespace BeatMeGameModel.EditorModels
                 WorkTread.TrackFFT.samplingFrequency);
         }
 
-        public void StartPlayTest(Action onBeatAction, Action clearAction)
+        public void StartPlayTest(Action onBeatAction, Action clearAction, Action shutdownAction, bool isSecondTest)
         {
             if(engine != null) return;
             PackVertices(Vertices, PackingDirection.Backward);
@@ -45,7 +45,8 @@ namespace BeatMeGameModel.EditorModels
                 new TimeSpan(0, 0, 0, (CurrentSecond * FramesPerSecond  + 1) * FFT.FFTSize / WorkTread.TrackFFT.samplingFrequency));
             engine.OnBeat += onBeatAction;
             engine.Clear += clearAction;
-            engine.Play();
+            engine.Shutdown += shutdownAction;
+            engine.Play(isSecondTest);
         }
 
         public void StopPlayTest()

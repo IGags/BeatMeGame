@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using BeatMeGame.MenuView;
@@ -35,6 +36,7 @@ namespace BeatMeGame.EditorView
         private Button decreaseBeatSecondButton;
         private TrackBar trackPositionTrackBar;
         private Button saveButton;
+        private BoolButton oneSecondPlayTestButton;
 
         public MusicEditorForm(Form parent, LevelSave save)
         {
@@ -141,7 +143,7 @@ namespace BeatMeGame.EditorView
                 Text = "Сохранить и выйти"
             };
 
-            var oneSecondPlayTestButton = new BoolButton()
+            oneSecondPlayTestButton = new BoolButton()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
@@ -240,7 +242,7 @@ namespace BeatMeGame.EditorView
                 }
                 else
                 {
-                    model.StartPlayTest(beatIndicationPanel.BeatDetected, beatIndicationPanel.ToDefault);
+                    model.StartPlayTest(beatIndicationPanel.BeatDetected, beatIndicationPanel.ToDefault,()=>{}, false);
                     FreezeInterface();
                     oneSecondPlayTestButton.Enabled = false;
                     playTestButton.Text = "Стоп";
@@ -249,7 +251,7 @@ namespace BeatMeGame.EditorView
 
             oneSecondPlayTestButton.Click += (sender, args) =>
             {
-                if (playTestButton.IsActivated)
+                if (oneSecondPlayTestButton.IsActivated)
                 {
                     model.StopPlayTest();
                     UnfreezeInterface();
@@ -257,7 +259,10 @@ namespace BeatMeGame.EditorView
                 }
                 else
                 {
-                    model.StartPlayTest(beatIndicationPanel.BeatDetected, beatIndicationPanel.ToDefault);
+                    model.StartPlayTest(beatIndicationPanel.BeatDetected, beatIndicationPanel.ToDefault,()=>
+                    {
+                        oneSecondPlayTestButton.PerformClick();
+                    }, true);
                     FreezeInterface();
                     playTestButton.Enabled = false;
                 }

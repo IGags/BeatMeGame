@@ -2,22 +2,26 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using BeatMeGameModel.BeatVertexes;
 using BeatMeGameModel.IOWorkers;
 using NAudio.Wave;
 using SoundEngineLibrary;
+using Timer = System.Timers.Timer;
 
 namespace BeatMeGameModel
 {
     public class BeatEngine
     {
         public event Action OnBeat;
-        public event Action Clear; 
+        public event Action Clear;
+        public event Action Shutdown; 
+        public Timer timeOutShutdownTimer { get; } = new Timer() { Interval = 1000, Enabled = false };
         private readonly Queue<BeatVertex> vertexQueue = new Queue<BeatVertex>();
         private readonly SoundEngineTread workTread;
         private readonly int measureDelay;
         private Thread asyncEventInvoker;
-        private BeatDetectionType detectionType;
+        private readonly BeatDetectionType detectionType;
 
         public BeatEngine(SoundEngineTread workTread, Dictionary<TimeSpan, BeatVertex> beat, BeatDetectionType detectionType, TimeSpan position)
         {
@@ -30,7 +34,7 @@ namespace BeatMeGameModel
             this.detectionType = detectionType;
         }
 
-        public void Play()
+        public void Play(bool isShutdownAfterSecond )
         {
             if(workTread.OutputDevice.PlaybackState == PlaybackState.Playing) return;
             workTread.ChangePlaybackState();
@@ -38,6 +42,7 @@ namespace BeatMeGameModel
                 ? new Thread(ParseFFTQueue)
                 : new Thread(ParseBPMQueue);
             asyncEventInvoker.Start();
+            if (isShutdownAfterSecond) WaitOneSecondAsync();
         }
 
         public void Pause()
@@ -138,6 +143,14 @@ namespace BeatMeGameModel
 
                 Thread.Sleep(measureDelay);
             }
+        }
+
+        private async Task WaitOneSecondAsync()
+        {
+            var task = new Task(() => Thread.Sleep(1200));
+            task.Start();
+            await task;
+            Shutdown();
         }
     }
 }
