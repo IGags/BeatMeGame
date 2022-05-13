@@ -79,6 +79,9 @@
     <Compile Include="EditorView\BeatButton.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="EditorView\BeatIndicatorPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="EditorView\EditorDialogForm.cs">
       <SubType>Form</SubType>
     </Compile>

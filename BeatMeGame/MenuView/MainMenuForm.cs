@@ -71,6 +71,7 @@ namespace BeatMeGame
             Closing += (sender, args) =>
             {
                 updateTimer.Enabled = false;
+                MusicEngine.PauseTread();
             };
 
             VisibleChanged += (sender, args) =>

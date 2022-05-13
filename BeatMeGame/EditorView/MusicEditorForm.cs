@@ -29,6 +29,13 @@ namespace BeatMeGame.EditorView
         private FFTVertex flexibleVertexFFT;
         private BPMVertex flexibleBPMVertex;
         private SpectrumCanvas spectrogramPanel;
+        private Button saveAndExitButton;
+        private Button startSettingButton;
+        private Button increaseBeatSecondButton;
+        private Button decreaseBeatSecondButton;
+        private TrackBar trackPositionTrackBar;
+        private Button saveButton;
+
         public MusicEditorForm(Form parent, LevelSave save)
         {
             MdiParent = parent;
@@ -51,7 +58,7 @@ namespace BeatMeGame.EditorView
             DoubleBuffered = true;
             var startTime = new TimeSpan(0, 0, model.Save.Manifest.StartSecond);
 
-            var trackPositionTrackBar = new TrackBar()
+            trackPositionTrackBar = new TrackBar()
             {
                 Minimum = (int)startTime.TotalSeconds,
                 TickStyle = TickStyle.None,
@@ -72,14 +79,14 @@ namespace BeatMeGame.EditorView
                 Text = "Пуск"
             };
 
-            var startSettingButton = new Button()
+            startSettingButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Поставить время старта"
             };
 
-            var saveButton = new Button()
+            saveButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
@@ -108,14 +115,14 @@ namespace BeatMeGame.EditorView
                 BackColor = Color.Gray
             };
 
-            var decreaseBeatSecondButton = new Button()
+            decreaseBeatSecondButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Назад"
             };
 
-            var increaseBeatSecondButton = new Button()
+            increaseBeatSecondButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
@@ -127,18 +134,23 @@ namespace BeatMeGame.EditorView
                 BackColor = Color.Gray,
             };
 
-            var saveAndExitButton = new Button()
+            saveAndExitButton = new Button()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Сохранить и выйти"
             };
 
-            var changePlaybackTypeButton = new Button()
+            var oneSecondPlayTestButton = new BoolButton()
             {
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray,
                 Text = "Слушать одну секунду"
+            };
+
+            var beatIndicationPanel = new BeatIndicatorPanel()
+            {
+                BackColor = Color.DarkGray
             };
 
             increaseBeatSecondButton.Click += (sender, args) =>
@@ -164,10 +176,7 @@ namespace BeatMeGame.EditorView
                 VisualizeSpectrogram();
             };
 
-            saveButton.Click += (sender, args) =>
-            {
-                model.SaveModel();
-            };
+            saveButton.Click += (sender, args) => { model.SaveModel(); };
 
             startSettingButton.Click += (sender, args) =>
             {
@@ -225,12 +234,32 @@ namespace BeatMeGame.EditorView
                 if (playTestButton.IsActivated)
                 {
                     model.StopPlayTest();
+                    UnfreezeInterface();
+                    oneSecondPlayTestButton.Enabled = true;
                     playTestButton.Text = "Пуск";
                 }
                 else
                 {
-                    model.StartPlayTest();
+                    model.StartPlayTest(beatIndicationPanel.BeatDetected, beatIndicationPanel.ToDefault);
+                    FreezeInterface();
+                    oneSecondPlayTestButton.Enabled = false;
                     playTestButton.Text = "Стоп";
+                }
+            };
+
+            oneSecondPlayTestButton.Click += (sender, args) =>
+            {
+                if (playTestButton.IsActivated)
+                {
+                    model.StopPlayTest();
+                    UnfreezeInterface();
+                    playTestButton.Enabled = true;
+                }
+                else
+                {
+                    model.StartPlayTest(beatIndicationPanel.BeatDetected, beatIndicationPanel.ToDefault);
+                    FreezeInterface();
+                    playTestButton.Enabled = false;
                 }
             };
 
@@ -271,8 +300,10 @@ namespace BeatMeGame.EditorView
                 beatCoefficientPanel.Location = FFTCoefficientPanel.Location;
                 saveAndExitButton.Size = buttonSize;
                 saveAndExitButton.Location = new Point(increaseBeatSecondButton.Location.X, 24 * ClientSize.Height / 25);
-                changePlaybackTypeButton.Size = buttonSize;
-                changePlaybackTypeButton.Location = new Point(playTestButton.Left, playTestButton.Bottom + marginRange);
+                oneSecondPlayTestButton.Size = buttonSize;
+                oneSecondPlayTestButton.Location = new Point(playTestButton.Left, playTestButton.Bottom + marginRange);
+                beatIndicationPanel.Size = new Size(ClientSize.Width / 8, ClientSize.Width / 8);
+                beatIndicationPanel.Location = new Point(saveAndExitButton.Left, beatStatusPanel.Bottom);
             };
 
             FFTCoefficientPanel.Resize += (sender, args) =>
@@ -308,7 +339,30 @@ namespace BeatMeGame.EditorView
             Controls.Add(FFTCoefficientPanel);
             Controls.Add(beatCoefficientPanel);
             Controls.Add(saveAndExitButton);
-            Controls.Add(changePlaybackTypeButton);
+            Controls.Add(oneSecondPlayTestButton);
+            Controls.Add(beatIndicationPanel);
+        }
+
+        private void FreezeInterface()
+        {
+            beatStatusPanel.Enabled = false;
+            saveAndExitButton.Enabled = false;
+            startSettingButton.Enabled = false;
+            increaseBeatSecondButton.Enabled = false;
+            decreaseBeatSecondButton.Enabled = false;
+            trackPositionTrackBar.Enabled = false;
+            saveButton.Enabled = false;
+        }
+
+        private void UnfreezeInterface()
+        {
+            beatStatusPanel.Enabled = true;
+            saveAndExitButton.Enabled = true;
+            startSettingButton.Enabled = true;
+            increaseBeatSecondButton.Enabled = true;
+            decreaseBeatSecondButton.Enabled = true;
+            trackPositionTrackBar.Enabled = true;
+            saveButton.Enabled = true;
         }
 
         private void VisualizeSpectrogram()

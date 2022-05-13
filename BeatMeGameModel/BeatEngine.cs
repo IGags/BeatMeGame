@@ -11,7 +11,8 @@ namespace BeatMeGameModel
 {
     public class BeatEngine
     {
-        public Action OnBeat;
+        public event Action OnBeat;
+        public event Action Clear; 
         private readonly Queue<BeatVertex> vertexQueue = new Queue<BeatVertex>();
         private readonly SoundEngineTread workTread;
         private readonly int measureDelay;
@@ -21,9 +22,9 @@ namespace BeatMeGameModel
         public BeatEngine(SoundEngineTread workTread, Dictionary<TimeSpan, BeatVertex> beat, BeatDetectionType detectionType, TimeSpan position)
         {
             if (workTread.TreadType == ThreadOptions.TemporalThread) throw new ArgumentException("Invalid tread type");
-            FillVertexQueue(beat);
-            if (workTread.OutputDevice.PlaybackState == PlaybackState.Playing) workTread.ChangePlaybackState();
+            FillVertexQueue(beat, position);
             workTread.ChangePlayingPosition((int)position.TotalSeconds);
+            if (workTread.OutputDevice.PlaybackState == PlaybackState.Playing) workTread.ChangePlaybackState();
             this.workTread = workTread;
             measureDelay = 1000 / (this.workTread.TrackFFT.samplingFrequency / FFT.FFTSize);
             this.detectionType = detectionType;
@@ -47,11 +48,16 @@ namespace BeatMeGameModel
             asyncEventInvoker.Abort();
         }
 
-        private void FillVertexQueue(Dictionary<TimeSpan, BeatVertex> beat)
+        private void FillVertexQueue(Dictionary<TimeSpan, BeatVertex> beat, TimeSpan position)
         {
             foreach (var beatVertex in beat.OrderBy(value => value.Key))
             {
                 vertexQueue.Enqueue(beatVertex.Value);
+            }
+
+            while (vertexQueue.Any() && vertexQueue.Peek().Time < position)
+            {
+                vertexQueue.Dequeue();
             }
         }
 
@@ -59,8 +65,9 @@ namespace BeatMeGameModel
         {
             while (true)
             {
+                Clear();
                 var isDeletion = false;
-                while (vertexQueue.Peek().Time < workTread.MeasureTime())
+                while (vertexQueue.Any() && vertexQueue.Peek().Time < workTread.MeasureTime())
                 {
                     var vertex = vertexQueue.Dequeue();
                     switch (vertex.Type)
@@ -91,13 +98,14 @@ namespace BeatMeGameModel
 
         private void ParseBPMQueue()
         {
+            var bpm = 0d;
+            var beatCount = 0;
+            var startTime = TimeSpan.Zero;
             while (true)
             {
-                var bpm = 0d;
-                var startTime = TimeSpan.Zero;
+                Clear();
                 var isDeletion = false;
-                var isBPMChanged = false;
-                while (vertexQueue.Peek().Time < workTread.MeasureTime())
+                while (vertexQueue.Any() && vertexQueue.Peek().Time < workTread.MeasureTime())
                 {
                     var vertex = vertexQueue.Dequeue();
                     switch (vertex.Type)
@@ -105,7 +113,7 @@ namespace BeatMeGameModel
                         case VertexType.BPM:
                             bpm = ((BPMVertex)vertex).BPM;
                             startTime = vertex.Time;
-                            isBPMChanged = true;
+                            beatCount = 0;
                             break;
                         case VertexType.Artificial:
                             OnBeat();
@@ -116,14 +124,16 @@ namespace BeatMeGameModel
                     }
                 }
 
-                if (!isDeletion)
+                if (!isDeletion && bpm != 0)
                 {
-                    if(bpm == 0) break;
                     var deltaTime = workTread.MeasureTime() - startTime;
                     var beatInterval = 1000 / (int)(bpm / 60);
                     var released = deltaTime.TotalMilliseconds / beatInterval;
-                    var fractionalPart = released % (int)released;
-                    if (fractionalPart < (double)measureDelay / 1000) OnBeat();
+                    if ((int)released > beatCount)
+                    {
+                        OnBeat();
+                        beatCount = (int)released;
+                    }
                 }
 
                 Thread.Sleep(measureDelay);
