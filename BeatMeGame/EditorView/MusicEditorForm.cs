@@ -188,6 +188,7 @@ namespace BeatMeGame.EditorView
                 trackPositionTrackBar.Value = dialog.StartSecond;
                 trackPositionLabel.Text = new TimeSpan(0, 0, dialog.StartSecond).ToString();
                 model.ChangeStartTime(dialog.StartSecond);
+                VisualizeSpectrogram();
                 VisualizeModel();
             };
 

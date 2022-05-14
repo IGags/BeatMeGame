@@ -80,7 +80,6 @@ namespace SoundEngineLibrary
                         OutputDevice.Play();
                         break;
                     case PlaybackState.Stopped:
-                        CurrentTrack.Position = 0;
                         OutputDevice.Play();
                         break;
                 }
@@ -114,9 +113,23 @@ namespace SoundEngineLibrary
         /// <param name="position">время воспроизведения</param>
         public void ChangePlayingPosition(int position)
         {
-            if (OutputDevice != null)
+            if (OutputDevice == null) return;
+            var state = OutputDevice.PlaybackState;
+            OutputDevice.Stop();
+            CurrentTrack.CurrentTime = new TimeSpan(0, 0, position);
+            switch (state)
             {
-                CurrentTrack.CurrentTime = new TimeSpan(0, 0, position);
+                case PlaybackState.Stopped:
+                    OutputDevice.Stop();
+                    break;
+                case PlaybackState.Playing:
+                    OutputDevice.Play();
+                    break;
+                case PlaybackState.Paused:
+                    OutputDevice.Pause();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
     }

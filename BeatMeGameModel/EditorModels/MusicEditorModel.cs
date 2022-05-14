@@ -41,8 +41,10 @@ namespace BeatMeGameModel.EditorModels
         {
             if(engine != null) return;
             PackVertices(Vertices, PackingDirection.Backward);
-            engine = new BeatEngine(WorkTread, Save.Beat, Save.Manifest.DetectionType,
+            engine = new BeatEngine(WorkTread, Save.Beat.ToDictionary(value => value.Key, value => value.Value), 
+                Save.Manifest.DetectionType,
                 new TimeSpan(0, 0, 0, CurrentSecond));
+            UnpackVertices(CurrentSecond, PackingDirection.Forward);
             engine.OnBeat += onBeatAction;
             engine.Clear += clearAction;
             engine.Shutdown += shutdownAction;

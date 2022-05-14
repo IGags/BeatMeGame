@@ -160,7 +160,7 @@ namespace BeatMeGameModel
 
         private async Task WaitOneSecondAsync()
         {
-            var task = new Task(() => Thread.Sleep(1150));
+            var task = new Task(() => Thread.Sleep(1020));
             task.Start();
             await task;
             Shutdown();
