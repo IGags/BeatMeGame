@@ -13,7 +13,6 @@ namespace BeatMeGame
     {
         private Settings settingsConfig;
         private Form childForm;
-        private MenuStateMachine previousScene;
         private readonly SoundEngine sfxEngine = new SoundEngine(100, 50);
         private readonly SoundEngine musicEngine = new SoundEngine(100, 50);
         private MainEditorFormManager editor;

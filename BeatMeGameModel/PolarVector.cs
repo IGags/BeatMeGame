@@ -22,25 +22,24 @@ namespace BeatMeGameModel
         {
             var length = Math.Sqrt(x * x + y * y);
             var angle = Math.Acos(x / length);
-            if (y < 0) angle += Math.PI;
+            if (double.IsNaN(angle)) angle = 0;
+            if (y < 0) angle = 2* Math.PI - angle;
             return new PolarVector(angle, length);
         }
 
         public static (int, int) ToCartesianСoordinates(PolarVector vector)
         {
-            var x = (int)(vector.Length * Math.Cos(vector.Angle));
-            var y = (int)(vector.Length * Math.Sin(vector.Angle));
+            var x = (int)Math.Round(vector.Length * Math.Cos(vector.Angle));
+            var y = (int)Math.Round(vector.Length * Math.Sin(vector.Angle));
             return (x, y);
         }
 
         public static PolarVector operator +(PolarVector first, PolarVector second)
         {
-            if (first.Angle - second.Angle < 1e2) return new PolarVector(first.Angle, first.Length + second.Length);
-            var length = first.Length * first.Length + second.Length + second.Length -
-                         2 * first.Length * second.Length * Math.Cos(first.Angle + Math.PI - second.Angle);
-            var angle = Math.Asin(Math.Sin(first.Angle + Math.PI - second.Angle) * (second.Length / length)) -
-                        first.Angle;
-            return new PolarVector(angle, length);
+            var firstCart = ToCartesianСoordinates(first);
+            var secondCart = ToCartesianСoordinates(second);
+            var polar = new PolarVector((int)(firstCart.Item1 + secondCart.Item1), (int)(firstCart.Item2 + secondCart.Item2));
+            return new PolarVector((int)(firstCart.Item1 + secondCart.Item1), (int)(firstCart.Item2 + secondCart.Item2));
         }
     }
 }

@@ -37,15 +37,18 @@ namespace BeatMeGameModel.EditorModels
                 WorkTread.TrackFFT.samplingFrequency);
         }
 
-        public void StartPlayTest(Action onBeatAction, Action clearAction)
+        public void StartPlayTest(Action onBeatAction, Action clearAction, Action shutdownAction, bool isSecondTest)
         {
             if(engine != null) return;
             PackVertices(Vertices, PackingDirection.Backward);
-            engine = new BeatEngine(WorkTread, Save.Beat, Save.Manifest.DetectionType,
-                new TimeSpan(0, 0, 0, (CurrentSecond * FramesPerSecond  + 1) * FFT.FFTSize / WorkTread.TrackFFT.samplingFrequency));
+            engine = new BeatEngine(WorkTread, Save.Beat.ToDictionary(value => value.Key, value => value.Value), 
+                Save.Manifest.DetectionType,
+                new TimeSpan(0, 0, 0, CurrentSecond));
+            UnpackVertices(CurrentSecond, PackingDirection.Forward);
             engine.OnBeat += onBeatAction;
             engine.Clear += clearAction;
-            engine.Play();
+            engine.Shutdown += shutdownAction;
+            engine.Play(isSecondTest);
         }
 
         public void StopPlayTest()

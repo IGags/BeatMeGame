@@ -2,22 +2,26 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using BeatMeGameModel.BeatVertexes;
 using BeatMeGameModel.IOWorkers;
 using NAudio.Wave;
 using SoundEngineLibrary;
+using Timer = System.Timers.Timer;
 
 namespace BeatMeGameModel
 {
     public class BeatEngine
     {
         public event Action OnBeat;
-        public event Action Clear; 
+        public event Action Clear;
+        public event Action Shutdown;
         private readonly Queue<BeatVertex> vertexQueue = new Queue<BeatVertex>();
         private readonly SoundEngineTread workTread;
         private readonly int measureDelay;
         private Thread asyncEventInvoker;
-        private BeatDetectionType detectionType;
+        private readonly BeatDetectionType detectionType;
+        private BeatVertex lastVertex;
 
         public BeatEngine(SoundEngineTread workTread, Dictionary<TimeSpan, BeatVertex> beat, BeatDetectionType detectionType, TimeSpan position)
         {
@@ -30,7 +34,7 @@ namespace BeatMeGameModel
             this.detectionType = detectionType;
         }
 
-        public void Play()
+        public void Play(bool isShutdownAfterSecond )
         {
             if(workTread.OutputDevice.PlaybackState == PlaybackState.Playing) return;
             workTread.ChangePlaybackState();
@@ -38,6 +42,7 @@ namespace BeatMeGameModel
                 ? new Thread(ParseFFTQueue)
                 : new Thread(ParseBPMQueue);
             asyncEventInvoker.Start();
+            if (isShutdownAfterSecond) WaitOneSecondAsync();
         }
 
         public void Pause()
@@ -57,14 +62,22 @@ namespace BeatMeGameModel
 
             while (vertexQueue.Any() && vertexQueue.Peek().Time < position)
             {
-                vertexQueue.Dequeue();
+                if(vertexQueue.Peek().Type == VertexType.FFT 
+                   || vertexQueue.Peek().Type == VertexType.BPM) lastVertex = vertexQueue.Dequeue();
             }
         }
 
         private void ParseFFTQueue()
         {
+            
             while (true)
             {
+                if (lastVertex != null)
+                {
+                    workTread.TrackFFT.HighEdge = ((FFTVertex)lastVertex).TopFrequency;
+                    workTread.TrackFFT.LowEdge = ((FFTVertex)lastVertex).BotFrequency;
+                    workTread.TrackFFT.ThresholdValue = ((FFTVertex)lastVertex).ThresholdValue;
+                }
                 Clear();
                 var isDeletion = false;
                 while (vertexQueue.Any() && vertexQueue.Peek().Time < workTread.MeasureTime())
@@ -99,6 +112,10 @@ namespace BeatMeGameModel
         private void ParseBPMQueue()
         {
             var bpm = 0d;
+            if (lastVertex != null)
+            {
+                bpm = ((BPMVertex)lastVertex).BPM;
+            }
             var beatCount = 0;
             var startTime = TimeSpan.Zero;
             while (true)
@@ -114,6 +131,7 @@ namespace BeatMeGameModel
                             bpm = ((BPMVertex)vertex).BPM;
                             startTime = vertex.Time;
                             beatCount = 0;
+                            OnBeat();
                             break;
                         case VertexType.Artificial:
                             OnBeat();
@@ -138,6 +156,14 @@ namespace BeatMeGameModel
 
                 Thread.Sleep(measureDelay);
             }
+        }
+
+        private async Task WaitOneSecondAsync()
+        {
+            var task = new Task(() => Thread.Sleep(1020));
+            task.Start();
+            await task;
+            Shutdown();
         }
     }
 }
