@@ -67,10 +67,11 @@ namespace BeatMeGame.MenuView
                     .CreateTread(ThreadOptions.StaticThread, musicQueue.Dequeue(), FFTExistance.Exist);
             }
 
-            if (Engine.GetTread(TreadName).OutputDevice.PlaybackState == PlaybackState.Playing 
-                || Engine.GetTread(TreadName).OutputDevice.PlaybackState == PlaybackState.Paused) return;
-            GC.Collect();
-            Engine.GetTread(TreadName).ChangeTrack(musicQueue.Dequeue());
+            if (Engine.GetTread(TreadName).WaveChannel32.Position >= Engine.GetTread(TreadName).WaveChannel32.Length)
+            {
+                GC.Collect();
+                Engine.GetTread(TreadName).ChangeTrack(musicQueue.Dequeue());
+            }
         }
     }
 }

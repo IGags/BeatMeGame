@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -14,6 +15,8 @@ using BeatMeGameModel.BeatVertexes;
 using SoundEngineLibrary;
 using BeatMeGameModel.EditorModels;
 using BeatMeGameModel.IOWorkers;
+using NAudio.Wave;
+using Timer = System.Windows.Forms.Timer;
 
 
 namespace BeatMeGame.EditorView
@@ -37,6 +40,9 @@ namespace BeatMeGame.EditorView
         private TrackBar trackPositionTrackBar;
         private Button saveButton;
         private BoolButton oneSecondPlayTestButton;
+        private Timer timeLineUpdateTimer;
+        private SpectrographLineCanvas timeLine;
+        private int initialSecond;
 
         public MusicEditorForm(Form parent, LevelSave save)
         {
@@ -57,6 +63,7 @@ namespace BeatMeGame.EditorView
         {
             FormBorderStyle = FormBorderStyle.None;
             BackColor = Color.DarkGray;
+            
             DoubleBuffered = true;
             var startTime = new TimeSpan(0, 0, model.Save.Manifest.StartSecond);
 
@@ -150,6 +157,17 @@ namespace BeatMeGame.EditorView
                 Text = "Слушать одну секунду"
             };
 
+            timeLineUpdateTimer = new Timer()
+            {
+                Interval = 16,
+                Enabled = false
+            };
+
+            timeLine = new SpectrographLineCanvas()
+            {
+                BackColor = Color.Transparent
+            };
+
             var beatIndicationPanel = new BeatIndicatorPanel()
             {
                 BackColor = Color.DarkGray
@@ -240,6 +258,7 @@ namespace BeatMeGame.EditorView
                     UnfreezeInterface();
                     oneSecondPlayTestButton.Enabled = true;
                     playTestButton.Text = "Пуск";
+                    StopSpectrographVisualization();
                 }
                 else
                 {
@@ -247,6 +266,7 @@ namespace BeatMeGame.EditorView
                     FreezeInterface();
                     oneSecondPlayTestButton.Enabled = false;
                     playTestButton.Text = "Стоп";
+                    StartSpectrographVisualization();
                 }
             };
 
@@ -257,6 +277,7 @@ namespace BeatMeGame.EditorView
                     model.StopPlayTest();
                     UnfreezeInterface();
                     playTestButton.Enabled = true;
+                    StopSpectrographVisualization();
                 }
                 else
                 {
@@ -266,7 +287,26 @@ namespace BeatMeGame.EditorView
                     }, true);
                     FreezeInterface();
                     playTestButton.Enabled = false;
+                    StartSpectrographVisualization();
                 }
+            };
+
+            timeLineUpdateTimer.Tick += (sender, args) =>
+            {
+                var trackTime = model.WorkTread.MeasureTime();
+                if (model.WorkTread.OutputDevice.PlaybackState == PlaybackState.Stopped)
+                {
+                    if(playTestButton.IsActivated) playTestButton.PerformClick();
+                }
+                if (model.CurrentSecond != (int)trackTime.TotalSeconds)
+                {
+                    model.GetSecondByTime((int)trackTime.TotalSeconds);
+                    VisualizeModel();
+                    VisualizeSpectrogram();
+                    if(trackPositionTrackBar.Maximum >= (int)trackTime.TotalSeconds) 
+                        trackPositionTrackBar.Value = (int)trackTime.TotalSeconds;
+                }
+                timeLine.DrawNormalizedSecondIndicator((double)trackTime.Milliseconds / 1000);
             };
 
             Load += (sender, args) =>
@@ -310,6 +350,7 @@ namespace BeatMeGame.EditorView
                 oneSecondPlayTestButton.Location = new Point(playTestButton.Left, playTestButton.Bottom + marginRange);
                 beatIndicationPanel.Size = new Size(ClientSize.Width / 8, ClientSize.Width / 8);
                 beatIndicationPanel.Location = new Point(saveAndExitButton.Left, beatStatusPanel.Bottom);
+                timeLine.Location = new Point(spectrogramPanel.Left, spectrogramPanel.Bottom);
             };
 
             FFTCoefficientPanel.Resize += (sender, args) =>
@@ -330,6 +371,15 @@ namespace BeatMeGame.EditorView
 
             spectrogramPanel.Resize += (sender, args) =>
             {
+                timeLine.Size = new Size(spectrogramPanel.Width, spectrogramPanel.Height / 10);
+                timeLine.Hide();
+            };
+
+            Closing += (sender, args) =>
+            {
+                model.WorkTread.Dispose();
+                model.StopPlayTest();
+                GC.Collect();
             };
 
             Controls.Add(trackPositionTrackBar);
@@ -347,6 +397,27 @@ namespace BeatMeGame.EditorView
             Controls.Add(saveAndExitButton);
             Controls.Add(oneSecondPlayTestButton);
             Controls.Add(beatIndicationPanel);
+            Controls.Add(timeLine);
+        }
+
+        private void StartSpectrographVisualization()
+        {
+            timeLine.DrawNormalizedSecondIndicator(0);
+            timeLine.Show();
+            timeLine.BringToFront();
+            initialSecond = model.CurrentSecond;
+            timeLineUpdateTimer.Enabled = true;
+        }
+
+        private void StopSpectrographVisualization()
+        {
+            timeLineUpdateTimer.Enabled = false;
+            timeLine.Hide();
+            model.GetSecondByTime(initialSecond);
+            model.WorkTread.OutputDevice.Pause();
+            VisualizeModel();
+            VisualizeSpectrogram();
+            trackPositionTrackBar.Value = initialSecond;
         }
 
         private void FreezeInterface()

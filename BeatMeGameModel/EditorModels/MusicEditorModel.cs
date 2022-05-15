@@ -24,7 +24,7 @@ namespace BeatMeGameModel.EditorModels
         private BeatVertex CurrentVertex { get; set; } = new BeatVertex(TimeSpan.Zero, VertexType.None);
         private BeatVertex lastVertexPerFrame = new BeatVertex(TimeSpan.Zero, VertexType.None);
         private readonly Stack<BeatVertex> previousVertexStack = new Stack<BeatVertex>();
-        private SpectrogramModel spectrogramModel;
+        private readonly SpectrogramModel spectrogramModel;
         private Dictionary<TimeSpan, BeatVertex> alternativeType = new Dictionary<TimeSpan, BeatVertex>();
         private BeatEngine engine;
         public MusicEditorModel(SoundEngineTread tread, LevelSave save)
@@ -49,15 +49,17 @@ namespace BeatMeGameModel.EditorModels
             engine.Clear += clearAction;
             engine.Shutdown += shutdownAction;
             engine.Play(isSecondTest);
+            WorkTread.ChangePlayingPosition(CurrentSecond);
+            WorkTread.ChangePlaybackState();
         }
 
         public void StopPlayTest()
         {
             if(engine == null) return;
             engine.Pause();
+            WorkTread.OutputDevice.Pause();
             engine = null;
             WorkTread.ChangePlayingPosition(CurrentSecond);
-            UnpackVertices(CurrentSecond, PackingDirection.Forward);
         }
 
         public List<List<double>> GetSpectrogram(int lowFrequency, int highFrequency)

@@ -41,6 +41,7 @@ namespace BeatMeGame.EditorView
 
         public Brush SelectBrush(double value)
         {
+            if (double.IsNaN(value)) return new SolidBrush(Color.Black);
             return brushes[(int)((value - 1e-10) * 10)];
         }
     }

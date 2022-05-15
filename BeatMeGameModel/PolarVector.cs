@@ -38,7 +38,6 @@ namespace BeatMeGameModel
         {
             var firstCart = ToCartesianСoordinates(first);
             var secondCart = ToCartesianСoordinates(second);
-            var polar = new PolarVector((int)(firstCart.Item1 + secondCart.Item1), (int)(firstCart.Item2 + secondCart.Item2));
             return new PolarVector((int)(firstCart.Item1 + secondCart.Item1), (int)(firstCart.Item2 + secondCart.Item2));
         }
     }

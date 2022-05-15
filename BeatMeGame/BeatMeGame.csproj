@@ -95,6 +95,9 @@
     <Compile Include="EditorView\MusicEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="EditorView\SpectrographLineCanvas.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="EditorView\SpectrogramWrapper.cs" />
     <Compile Include="EditorView\SpectrumCanvas.cs">
       <SubType>Component</SubType>

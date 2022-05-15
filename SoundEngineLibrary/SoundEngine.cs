@@ -75,10 +75,7 @@ namespace SoundEngineLibrary
         /// <param name="treadName">Имя потока</param>
         public void TerminateTread(string treadName)
         {
-            TreadList[treadName].ChangePlaybackState();
-            TreadList[treadName].OutputDevice.Dispose();
-            TreadList[treadName].CurrentTrack.Dispose();
-            if(TreadList[treadName].TrackFFT != null) TreadList[treadName].TrackFFT.Dispose();
+            TreadList[treadName].Dispose();
             TreadList.Remove(treadName);
         }
 
@@ -91,7 +88,8 @@ namespace SoundEngineLibrary
             foreach (var key in keys)
             {
                 if (TreadList[key].TreadType == ThreadOptions.TemporalThread
-                    && TreadList[key].OutputDevice.PlaybackState == PlaybackState.Stopped) TreadList.Remove(key);
+                    && (TreadList[key].OutputDevice.PlaybackState == PlaybackState.Stopped 
+                        || TreadList[key].WaveChannel32.Position > TreadList[key].WaveChannel32.Length)) TreadList.Remove(key);
             }
         }
     }

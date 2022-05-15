@@ -1,4 +1,5 @@
 ﻿using System;
+using NAudio.Utils;
 using NAudio.Wave;
 
 namespace SoundEngineLibrary
@@ -12,11 +13,13 @@ namespace SoundEngineLibrary
     public class SoundEngineTread
     {
         public Mp3FileReader CurrentTrack { get; private set; }
+        public WaveChannel32 WaveChannel32 { get; private set; }
         public string FullFilePath { get; private set; }
         public WaveOutEvent OutputDevice { get; private set; }
         public TimeSpan MaxSongDuration { get; private set; }
         public FFT TrackFFT { get; private set; }
         public ThreadOptions TreadType { get; }
+        private TimeSpan startPositionTimeSpan = TimeSpan.Zero;
 
         /// <summary>
         /// Проигрывает файл по указаному пути
@@ -30,13 +33,13 @@ namespace SoundEngineLibrary
             TreadType = treadType;
             OutputDevice = new WaveOutEvent();
             CurrentTrack = new Mp3FileReader(fullPath);
+            WaveChannel32 = new WaveChannel32(CurrentTrack);
             TrackFFT = existence == FFTExistance.Exist ? new FFT(fullPath) : null;
             GC.Collect();
-            OutputDevice.Init(CurrentTrack);
+            OutputDevice.Init(WaveChannel32);
             OutputDevice.Play();
             MaxSongDuration = CurrentTrack.TotalTime;
         }
-
         public SoundEngineTread(string fullPath, ThreadOptions treadType, FFTExistance existence, int soundPower, int maxPower)
             : this(fullPath, treadType, existence)
         {
@@ -51,13 +54,15 @@ namespace SoundEngineLibrary
         {
             if (TreadType == ThreadOptions.StaticThread)
             {
+                Dispose();
                 FullFilePath = fullPath;
                 if (OutputDevice != null) OutputDevice.Stop();
                 else OutputDevice = new WaveOutEvent();
                 CurrentTrack = new Mp3FileReader(fullPath);
+                WaveChannel32 = new WaveChannel32(CurrentTrack);
                 TrackFFT = TrackFFT != null ? new FFT(fullPath) : null;
                 GC.Collect();
-                OutputDevice.Init(CurrentTrack);
+                OutputDevice.Init(WaveChannel32);
                 OutputDevice.Play();
                 MaxSongDuration = CurrentTrack.TotalTime;
             }
@@ -95,7 +100,7 @@ namespace SoundEngineLibrary
         {
             if (value > max || value < 0)
                 throw new ArgumentException("Значение выше максимального или меньше нуля");
-            OutputDevice.Volume = (float)value / max;
+            WaveChannel32.Volume = (float)value / max;
         }
 
         /// <summary>
@@ -104,7 +109,19 @@ namespace SoundEngineLibrary
         /// <returns>время</returns>
         public TimeSpan MeasureTime()
         {
-            return OutputDevice != null ? CurrentTrack.CurrentTime : TimeSpan.Zero;
+            if(OutputDevice == null) return TimeSpan.Zero;
+            return OutputDevice.GetPositionTimeSpan() + startPositionTimeSpan;
+        }
+
+        public void Dispose()
+        {
+            OutputDevice.Stop();
+            TrackFFT?.Dispose();
+            WaveChannel32?.Close();
+            CurrentTrack?.Close();
+            WaveChannel32?.Dispose();
+            CurrentTrack?.Dispose();
+            OutputDevice?.Dispose();
         }
 
         /// <summary>
@@ -114,23 +131,21 @@ namespace SoundEngineLibrary
         public void ChangePlayingPosition(int position)
         {
             if (OutputDevice == null) return;
-            var state = OutputDevice.PlaybackState;
             OutputDevice.Stop();
-            CurrentTrack.CurrentTime = new TimeSpan(0, 0, position);
-            switch (state)
+            if (OutputDevice.GetPosition() != 0)
             {
-                case PlaybackState.Stopped:
-                    OutputDevice.Stop();
-                    break;
-                case PlaybackState.Playing:
-                    OutputDevice.Play();
-                    break;
-                case PlaybackState.Paused:
-                    OutputDevice.Pause();
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                WaveChannel32?.Close();
+                CurrentTrack?.Close();
+                WaveChannel32?.Dispose();
+                CurrentTrack?.Dispose();
+                OutputDevice.Dispose();
             }
+            CurrentTrack = new Mp3FileReader(FullFilePath);
+            CurrentTrack.CurrentTime = new TimeSpan(0, 0, position);
+            startPositionTimeSpan = CurrentTrack.CurrentTime;
+            WaveChannel32 = new WaveChannel32(CurrentTrack);
+            OutputDevice.Init(WaveChannel32);
+            OutputDevice.Pause();
         }
     }
 }
