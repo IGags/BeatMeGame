@@ -16,7 +16,7 @@ namespace SoundEngineLibrary
         private long CurrentSamplePosition { get; set; }
 
 
-        private readonly AcmMp3FrameDecompressor decompressor;
+        private AcmMp3FrameDecompressor decompressor;
         public readonly int samplingFrequency;
         private readonly bool isTwoChannels;
         private readonly string filePath;
@@ -77,6 +77,7 @@ namespace SoundEngineLibrary
             
             if (beatBuffer.Count != 0) return beatBuffer[ChooseElement(trackPosition)];
             ComputeBeat();
+            if (beatBuffer.Count == 0) return false;
             return beatBuffer[ChooseElement(trackPosition)];
         }
 
@@ -98,7 +99,7 @@ namespace SoundEngineLibrary
         {
             var currentMillisecond = trackPosition.TotalSeconds % 1;
             var maxElementPosition = samplingFrequency / FFTSize - 1;
-            var millisecondPerElement = 1.0 / maxElementPosition;
+            var millisecondPerElement = 1.0 / (maxElementPosition + 1);
             var elementPosition = (int)Math.Round(currentMillisecond / millisecondPerElement);
             return elementPosition > FFTBuffer.Count - 1 ? FFTBuffer.Count - 1 : elementPosition;
         }
@@ -209,25 +210,22 @@ namespace SoundEngineLibrary
             var isFrameDecompressed = frame != null;
             var decompressedBytes = new byte[60000];
             var pcmData = new List<short>();
-            if (isFrameDecompressed)
+            if (!isFrameDecompressed) return new List<short>();
+            var decompressionSize = decompressor.DecompressFrame(frame, decompressedBytes, 0);
+            for (var i = 0; i < decompressionSize; i += 2)
             {
-                var decompressionSize = decompressor.DecompressFrame(frame, decompressedBytes, 0);
-                for (var i = 0; i < decompressionSize; i += 2)
+                var pcmValue = BitConverter.ToInt16(decompressedBytes, i);
+                if (isTwoChannels)
                 {
-                    var pcmValue = BitConverter.ToInt16(decompressedBytes, i);
-                    if (isTwoChannels)
-                    {
-                        i += 2;
-                        pcmValue = (short)(pcmValue / 2 + BitConverter.ToInt16(decompressedBytes, i) / 2);
-                    }
-
-                    pcmData.Add(pcmValue);
+                    i += 2;
+                    pcmValue = (short)(pcmValue / 2 + BitConverter.ToInt16(decompressedBytes, i) / 2);
                 }
 
-                return pcmData;
+                pcmData.Add(pcmValue);
             }
 
-            return new List<short>();
+            return pcmData;
+
         }
     }
 }

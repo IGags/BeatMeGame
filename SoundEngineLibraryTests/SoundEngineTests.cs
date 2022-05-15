@@ -32,7 +32,7 @@ namespace SoundEngineLibraryTests
             var engine = new SoundEngine();
             var treadName = engine.CreateTread(ThreadOptions.TemporalThread, "TestSamples\\empty.mp3",
                 FFTExistance.DoesntExist);
-            Thread.Sleep(10);
+            Thread.Sleep(30);
             engine.ClearDiedTreads();
             Assert.IsEmpty(engine.TreadList);
         }
