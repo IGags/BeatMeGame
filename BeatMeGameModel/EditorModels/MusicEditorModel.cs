@@ -60,6 +60,7 @@ namespace BeatMeGameModel.EditorModels
             WorkTread.OutputDevice.Pause();
             engine = null;
             WorkTread.ChangePlayingPosition(CurrentSecond);
+            GC.Collect();
         }
 
         public List<List<double>> GetSpectrogram(int lowFrequency, int highFrequency)
