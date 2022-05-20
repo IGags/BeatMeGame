@@ -157,9 +157,7 @@ namespace BeatMeGameModel.EditorModels //TODO: FFT парсер созадёт �
 
         private async Task WaitOneSecondAsync()
         {
-            var task = new Task(() => Thread.Sleep(1020));
-            task.Start();
-            await task;
+            await Task.Delay(1020);
             Shutdown();
         }
     }
