@@ -173,6 +173,11 @@ namespace BeatMeGame.EditorView
                 BackColor = Color.DarkGray
             };
 
+            var levelEditorButton = new Button()
+            {
+                BackColor = Color.DarkGray
+            };
+
             increaseBeatSecondButton.Click += (sender, args) =>
             {
                 model.GetNextSecond();
@@ -294,7 +299,7 @@ namespace BeatMeGame.EditorView
             timeLineUpdateTimer.Tick += (sender, args) =>
             {
                 var trackTime = model.WorkTread.MeasureTime();
-                if (model.WorkTread.OutputDevice.PlaybackState == PlaybackState.Stopped)
+                if (model.WorkTread.MeasureTime() >= model.WorkTread.MaxSongDuration)
                 {
                     if(playTestButton.IsActivated) playTestButton.PerformClick();
                 }
@@ -307,6 +312,15 @@ namespace BeatMeGame.EditorView
                         trackPositionTrackBar.Value = (int)trackTime.TotalSeconds;
                 }
                 timeLine.DrawNormalizedSecondIndicator((double)trackTime.Milliseconds / 1000);
+            };
+
+            levelEditorButton.Click += (sender, args) =>
+            {
+                var creator = (IFormCreator) MdiParent;
+                model.Save.Manifest.EditorType = EditorType.Level;
+                model.SaveModel();
+                creator.CreateChildForm(new MainLevelEditorForm(MdiParent, model.Save));
+                Close();
             };
 
             Load += (sender, args) =>
@@ -351,6 +365,9 @@ namespace BeatMeGame.EditorView
                 beatIndicationPanel.Size = new Size(ClientSize.Width / 8, ClientSize.Width / 8);
                 beatIndicationPanel.Location = new Point(saveAndExitButton.Left, beatStatusPanel.Bottom);
                 timeLine.Location = new Point(spectrogramPanel.Left, spectrogramPanel.Bottom);
+                levelEditorButton.Size = new Size(ClientSize.Width / 45, ClientSize.Height / 10);
+                levelEditorButton.Location = new Point(beatIndicationPanel.Right + ClientSize.Width / 80,
+                    beatIndicationPanel.Top + beatIndicationPanel.Height / 2 - levelEditorButton.Height / 2);
             };
 
             FFTCoefficientPanel.Resize += (sender, args) =>
@@ -398,6 +415,7 @@ namespace BeatMeGame.EditorView
             Controls.Add(oneSecondPlayTestButton);
             Controls.Add(beatIndicationPanel);
             Controls.Add(timeLine);
+            Controls.Add(levelEditorButton);
         }
 
         private void StartSpectrographVisualization()

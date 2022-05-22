@@ -25,7 +25,15 @@ namespace BeatMeGame.EditorView
                 ChooseSong(save, true);
             }
             var creator = (IFormCreator)parent;
-            creator.CreateChildForm(new MusicEditorForm(parent, save));
+            switch (save.Manifest.EditorType)
+            {
+                case EditorType.Music:
+                    creator.CreateChildForm(new MusicEditorForm(parent, save));
+                    break;
+                case EditorType.Level:
+                    creator.CreateChildForm(new MainLevelEditorForm(parent, save));
+                    break;
+            }
         }
 
         private void ChooseSong(LevelSave save, bool looped)
@@ -37,7 +45,7 @@ namespace BeatMeGame.EditorView
                 dialog.Filter = @"File in mp3 |*.mp3";
                 if (DialogResult.OK == dialog.ShowDialog())
                 {
-                    save.Manifest = new ManifestData(dialog.SafeFileName, BeatDetectionType.FFT, 0);
+                    save.Manifest = new ManifestData(dialog.SafeFileName, BeatDetectionType.FFT, 0, EditorType.Music);
                     LevelFolderWorker.CopyMp3ToLevelFolder(dialog.FileName, save.LevelName + "\\" +dialog.SafeFileName);
                     LevelFolderWorker.DeleteFile(save.LevelName, "beat.txt");
                     break;
