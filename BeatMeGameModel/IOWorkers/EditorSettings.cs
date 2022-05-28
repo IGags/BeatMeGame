@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 
-namespace BeatMeGameModel.MenuBGModels
+namespace BeatMeGameModel.IOWorkers
 {
     [Serializable]
     public class EditorSettings

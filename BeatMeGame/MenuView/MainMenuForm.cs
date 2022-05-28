@@ -9,7 +9,7 @@ using BeatMeGame.Interfaces;
 using BeatMeGame.MenuBGWrappers;
 using BeatMeGame.MenuView;
 using BeatMeGameModel;
-using BeatMeGameModel.MenuBGModels;
+using BeatMeGameModel.IOWorkers;
 using SoundEngineLibrary;
 using Timer = System.Windows.Forms.Timer;
 using NAudio.Wave;

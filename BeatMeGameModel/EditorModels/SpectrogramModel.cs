@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BeatMeGameModel.EditorModels
+namespace BeatMeGameModel.EitorModels
 {
     public class SpectrogramModel
     {

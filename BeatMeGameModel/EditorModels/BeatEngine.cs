@@ -8,7 +8,7 @@ using BeatMeGameModel.IOWorkers;
 using NAudio.Wave;
 using SoundEngineLibrary;
 
-namespace BeatMeGameModel.EditorModels //TODO: FFT парсер созадёт для себя отдельный поток
+namespace BeatMeGameModel.EitorModels //TODO: FFT парсер созадёт для себя отдельный поток
 {
     public class BeatEngine
     {

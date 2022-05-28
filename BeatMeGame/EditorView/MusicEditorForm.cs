@@ -13,7 +13,7 @@ using BeatMeGame.MenuView;
 using BeatMeGameModel;
 using BeatMeGameModel.BeatVertexes;
 using SoundEngineLibrary;
-using BeatMeGameModel.EditorModels;
+using BeatMeGameModel.EitorModels;
 using BeatMeGameModel.IOWorkers;
 using NAudio.Wave;
 using Timer = System.Windows.Forms.Timer;

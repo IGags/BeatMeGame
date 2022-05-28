@@ -7,7 +7,7 @@ using SoundEngineLibrary;
 using BeatMeGameModel.BeatVertexes;
 using BeatMeGameModel.IOWorkers;
 
-namespace BeatMeGameModel.EditorModels
+namespace BeatMeGameModel.EitorModels
 {
     public enum PackingDirection
     {

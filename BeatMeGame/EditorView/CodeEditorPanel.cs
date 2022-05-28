@@ -22,7 +22,8 @@ namespace BeatMeGame.EditorView
                 Multiline = true,
                 Font = new Font(FontFamily.GenericSansSerif, textSize, FontStyle.Regular),
                 WordWrap = false
-        };
+            };
+
             SizeChanged += (sender, args) =>
             {
                 codeEditorTextBox.Size = ClientSize;
