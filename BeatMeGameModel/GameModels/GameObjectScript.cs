@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -14,30 +16,31 @@ using AngouriMath.Extensions;
 [assembly: InternalsVisibleTo("ModelTests")]
 namespace BeatMeGameModel.GameModels
 {
+    public enum AccessLevel
+    {
+        ObjectScript,
+        MainScript
+    }
     public class GameObjectScript
     {
-        private enum AccessLevel
-        {
-            ObjectScript,
-            MainScript
-        }
 
         public GameObject TargetObject { get; set; }
         public bool IsEnded { get; private set; }
+        public AccessLevel ScriptAccessLevel { get; private set; }
 
         [Variable] private readonly Dictionary<string, int> intVariablesDictionary = new Dictionary<string, int>();
 
         [Variable] private readonly Dictionary<string, double> doubleVariablesDictionary =
             new Dictionary<string, double>();
 
+        private GameObjectScript invoker;
+        private Game targetGame;
         private Dictionary<int, (int, int)> brackets = new Dictionary<int, (int, int)>();
-        private readonly Stack<int> cycleIterationStack = new Stack<int>();
         private readonly int variableTypeCount = 2;
-        private double currentCommandPerforamcePrecent;
+        private double currentCommandPerformancePercent;
         private TimeSpan startTime;
         private TimeSpan executionTime;
         private int commandPointerPosition;
-        private AccessLevel accessLevel;
         private readonly string[] commandSequence;
         private string[] extractedCommands;
         private bool isStarted;
@@ -48,10 +51,17 @@ namespace BeatMeGameModel.GameModels
             Initialize(commandSequence);
         }
 
-        public void Start(TimeSpan time, GameObject targetObject = null)
+        public GameObjectScript Copy()
         {
-            if (accessLevel == AccessLevel.ObjectScript && targetObject == null)
+            return new GameObjectScript(commandSequence);
+        }
+
+        public void Start(TimeSpan time, Game targetGame, GameObject targetObject = null, GameObjectScript invoker = null)
+        {
+            if (ScriptAccessLevel == AccessLevel.ObjectScript && targetObject == null)
                 throw new ArgumentException("Invalid Object Initialization");
+            this.invoker = invoker;
+            this.targetGame = targetGame;
             startTime = time;
             isStarted = true;
             TargetObject = targetObject;
@@ -65,25 +75,33 @@ namespace BeatMeGameModel.GameModels
         public void Resume()
         {
             if (isStarted) return;
-            if (TargetObject == null && accessLevel == AccessLevel.ObjectScript)
+            if (TargetObject == null && ScriptAccessLevel == AccessLevel.ObjectScript)
                 throw new ArgumentException("CannotResume");
+            isStarted = true;
+        }
+
+        public void Resume(TimeSpan time)
+        {
+            if (isStarted) return;
+            if (TargetObject == null && ScriptAccessLevel == AccessLevel.ObjectScript)
+                throw new ArgumentException("CannotResume");
+            executionTime = time;
             isStarted = true;
         }
 
         public void Interpret(TimeSpan time)
         {
             if (time < executionTime) throw new InterpretException("queryTimeLessThanInterpretTime");
-            if(accessLevel == AccessLevel.MainScript) MainInterpret(time);
-            else ObjectInterpret(time);
-        }
-
-        private void MainInterpret(TimeSpan time)
-        {
             while (executionTime < time)
             {
-                //ParseAttributes
+                if (!isStarted)
+                {
+                    executionTime = time;
+                    return;
+                }
                 if (commandPointerPosition >= extractedCommands.Length)
                 {
+                    invoker?.Resume(executionTime);
                     IsEnded = true;
                     return;
                 }
@@ -93,7 +111,6 @@ namespace BeatMeGameModel.GameModels
 
                 if (currentCommand.Contains('='))
                 {
-                    //if attribute parsed throw new exception
                     var parts = currentCommand.Split('=');
                     if (parts.Length != 2) throw new InterpretException("Evaluation Is incorrect");
                     if (doubleVariablesDictionary.ContainsKey(parts[0]))
@@ -118,15 +135,22 @@ namespace BeatMeGameModel.GameModels
                         {
                             commandPointerPosition = brackets[commandPointerPosition].Item1 + 1;
                             brackets.Remove(brackets[commandPointerPosition - 1].Item1);
-                            brackets.Remove(commandPointerPosition);
+                            brackets.Remove(commandPointerPosition - 1);
                             continue;
                         }
                     }
                     else InitializeFor(currentCommand);
-                    if (currentCommand.Contains('{')) currentCommand = currentCommand.Split('{')[2];
-                }
 
-                ParseCommand
+                    if (!currentCommand.Contains('{'))
+                    {
+                        commandPointerPosition++;
+                        continue;
+                        
+                    }
+                }
+                if (currentCommand.Contains('{')) currentCommand = currentCommand.Split('{')[1];
+                if (ScriptAccessLevel == AccessLevel.MainScript) ParseMainCommand(currentCommand, time);
+                else ParseObjectCommand(currentCommand, time);
             }
         }
 
@@ -177,10 +201,10 @@ namespace BeatMeGameModel.GameModels
                 switch (commandString)
                 {
                     case "[object]":
-                        accessLevel = AccessLevel.ObjectScript;
+                        ScriptAccessLevel = AccessLevel.ObjectScript;
                         return i;
                     case "[Main]":
-                        accessLevel = AccessLevel.MainScript;
+                        ScriptAccessLevel = AccessLevel.MainScript;
                         return i;
 
                     default:
@@ -396,33 +420,31 @@ namespace BeatMeGameModel.GameModels
 
         private string ChangeVariables(string rawExpression)
         {
+            rawExpression = ReplaceAllIntersections(rawExpression, "player1X", targetGame.Player1.XPosition);
+            rawExpression = ReplaceAllIntersections(rawExpression, "player2X", targetGame.Player2.XPosition);
+            rawExpression = ReplaceAllIntersections(rawExpression, "player1Y", targetGame.Player1.YPosition);
+            rawExpression = ReplaceAllIntersections(rawExpression, "player2Y", targetGame.Player2.YPosition);
             foreach (var key in intVariablesDictionary.Keys)
             {
-                var entry = 0;
-                while (entry != -1)
-                {
-                    entry = rawExpression.IndexOf(key, 0, StringComparison.InvariantCulture);
-                    if (entry != -1)
-                    {
-                        rawExpression = rawExpression.Replace(key, intVariablesDictionary[key].ToString());
-                    }
-                }
+                rawExpression = ReplaceAllIntersections(rawExpression, key, intVariablesDictionary[key]);
             }
-
             foreach (var key in doubleVariablesDictionary.Keys)
             {
-                var entry = 0;
-                while (entry != -1)
-                {
-                    entry = rawExpression.IndexOf(key, 0, StringComparison.InvariantCulture);
-                    if (entry != -1)
-                    {
-                        rawExpression = rawExpression.Replace(key, doubleVariablesDictionary[key].ToString());
-                    }
-                }
+                rawExpression = ReplaceAllIntersections(rawExpression, key, intVariablesDictionary[key]);
+            }
+            return rawExpression;
+        }
+
+        private string ReplaceAllIntersections(string rawString, string entry, double toReplace)
+        {
+            var indexEntry = rawString.IndexOf(entry, 0, StringComparison.InvariantCulture);
+            while (indexEntry != -1)
+            {
+                rawString = rawString.Replace(entry, toReplace.ToString());
+                indexEntry = rawString.IndexOf(entry, 0, StringComparison.InvariantCulture);
             }
 
-            return rawExpression;
+            return rawString;
         }
 
         private int ParseForCommand(string rawString)
@@ -430,7 +452,7 @@ namespace BeatMeGameModel.GameModels
             var openBracketIndex = rawString.IndexOf('(');
             var closeBracketIndex = rawString.IndexOf(')');
             var iterationsCount = int.Parse(rawString.Substring(openBracketIndex + 1, closeBracketIndex - openBracketIndex - 1));
-            if (iterationsCount <= 0) throw new InterpretException("Cycle argument should be greater then 0");
+            if (iterationsCount <= 0) throw new InterpretException("Cycle argument should be greater than 0");
             return iterationsCount;
         }
 
@@ -441,17 +463,17 @@ namespace BeatMeGameModel.GameModels
             var bracketParseStack = new Stack<int>();
             for (int i = finderPointer; i < extractedCommands.Length; i++)
             {
-                if (extractedCommands[finderPointer].Contains('{'))
+                if (extractedCommands[i].Contains('{'))
                 {
                     bracketParseStack.Push(finderPointer);
                 }
 
-                if (!extractedCommands[finderPointer].Contains('}')) continue;
+                if (!extractedCommands[i].Contains('}')) continue;
                 if (bracketParseStack.Count == 1)
                 {
 
-                    brackets[bracketParseStack.Peek()] = (finderPointer, argument);
-                    brackets[finderPointer] = (bracketParseStack.Peek(), argument);
+                    brackets[finderPointer] = (i, argument);
+                    brackets[i] = (finderPointer, argument);
                     break;
                 }
 
@@ -459,15 +481,331 @@ namespace BeatMeGameModel.GameModels
             }
         }
 
-        private void ParseMainCommand(string currentCommand)
+        private void ParseMainCommand(string currentCommand, TimeSpan time)
         {
+            var arguments = ParseCommandArguments(currentCommand);
+            if (currentCommand.StartsWith("spawn"))
+            {
+                if (arguments.Length != 6) throw new InvalidEnumArgumentException("Invalid arguments");
+                var doubleArguments = arguments.Take(4).ToArray();
+                var preparedArguments = new double[4];
+                for (int i = 0; i < preparedArguments.Length; i++)
+                    preparedArguments[i] = ParseDoubleArgument(doubleArguments[i]);
+                targetGame.Spawn(preparedArguments[0], preparedArguments[1], preparedArguments[2], preparedArguments[3],
+                    arguments[4], arguments[5]);
+            }
+            else if (currentCommand.StartsWith("delay"))
+            {
+                if(arguments.Length != 1) throw new InvalidEnumArgumentException("Invalid arguments");
+                var doubleArgument = ParseDoubleArgument(arguments[0]);
+                var deltaTime = (time - executionTime).TotalSeconds;
+                var remainingTime = (1 - currentCommandPerformancePercent) * doubleArgument;
+                if (remainingTime > deltaTime)
+                {
+                    currentCommandPerformancePercent += deltaTime / doubleArgument;
+                    executionTime = time;
+                }
 
+                if (Math.Abs(remainingTime - deltaTime) < 10e-5)
+                {
+                    currentCommandPerformancePercent = 0;
+                    executionTime = time;
+                }
+
+                if (remainingTime < deltaTime)
+                {
+                    executionTime += new TimeSpan(0, 0, 0, 0,
+                        (int)((1 - currentCommandPerformancePercent) * doubleArgument * 1000));
+                    currentCommandPerformancePercent = 0;
+                }
+            }
+            else if(currentCommand.StartsWith("execute"))
+            {
+                if(arguments.Length != 1) throw new InvalidEnumArgumentException("Invalid arguments");
+                targetGame.InvokeGameObjectScript(arguments[0], this, TargetObject);
+                Interrupt();
+            }
+            else if (currentCommand.StartsWith("asyncExecute"))
+            {
+                if (arguments.Length != 1) throw new InvalidEnumArgumentException("Invalid arguments");
+                targetGame.InvokeGameObjectScript(arguments[0], null, TargetObject);
+            }
+            else if (currentCommand == "" || currentCommand == "}") { }
+            else
+            {
+                throw new InvalidCommandException();
+            }
+
+            if (currentCommandPerformancePercent != 0) return;
+            if (currentCommand.Contains('}') && brackets.ContainsKey(commandPointerPosition))
+            {
+                brackets[commandPointerPosition] = (brackets[commandPointerPosition].Item1,
+                    brackets[commandPointerPosition].Item2 - 1);
+                commandPointerPosition = brackets[commandPointerPosition].Item1;
+                brackets[commandPointerPosition] = (brackets[commandPointerPosition].Item1,
+                    brackets[commandPointerPosition].Item2 - 1);
+                return;
+            }
+            commandPointerPosition++;
         }
 
-        //private void ValidateAndShift(string command)
-        //{
-        //    if (command.Contains('}') && brackets.ContainsKey('}'))
-        //        commandPointerPosition = brackets[commandPointerPosition];
-        //}
+        private string[] ParseCommandArguments(string command)
+        {
+            var brackets = FindPairBrackets(command);
+            if (brackets.Item1 == -1) return new string[0];
+            var arguments = command.Substring(brackets.Item1 + 1, brackets.Item2 - brackets.Item1 - 1);
+            return arguments.Split(',');
+        }
+
+        private (int, int) FindPairBrackets(string command)
+        {
+            var bracketStack = new Stack<int>();
+            for (int i = 0; i < command.Length; i++)
+            {
+                if(command[i] == '(') bracketStack.Push(i);
+                if (command[i] == ')')
+                {
+                    if (bracketStack.Count == 1) return (bracketStack.Pop(), i);
+                    bracketStack.Pop();
+                }
+            }
+
+            if (bracketStack.Count == 0) return (-1, -1);
+            throw new BracketException("Incorrect bracket expression");
+        }
+
+        private double ParseDoubleArgument(string argument)
+        {
+            if (doubleVariablesDictionary.ContainsKey(argument))
+                return doubleVariablesDictionary[argument];
+            if (intVariablesDictionary.ContainsKey(argument))
+                return intVariablesDictionary[argument];
+            if (double.TryParse(argument, out var output))
+                return output;
+            return Evaluate(argument);
+        }
+
+        private void ParseObjectCommand(string currentCommand, TimeSpan time)
+        {
+            var arguments = ParseCommandArguments(currentCommand);
+            if (currentCommand.StartsWith("move"))
+            {
+                if(arguments.Length != 3) throw new InvalidEnumArgumentException("Invalid arguments");
+                var xEquation = ChangeVariables(arguments[0]);
+                var yEquation = ChangeVariables(arguments[1]);
+                var doubleArgument = ParseDoubleArgument(arguments[2]);
+                var deltaTime = (time - executionTime).TotalSeconds;
+                var remainingTime = (1 - currentCommandPerformancePercent) * doubleArgument;
+                var workTime = (executionTime - startTime).TotalSeconds;
+                if (xEquation.Contains('t') && yEquation.Contains('t'))
+                {
+                    if (remainingTime > deltaTime)
+                    {
+                        var endTime = (time - startTime).TotalSeconds;
+                        TargetObject.XPosition += ReplaceTimeAndEvaluate(xEquation, endTime) -
+                                                 ReplaceTimeAndEvaluate(xEquation, workTime);
+                        TargetObject.YPosition += ReplaceTimeAndEvaluate(yEquation, endTime) -
+                                                 ReplaceTimeAndEvaluate(yEquation, workTime);
+                        currentCommandPerformancePercent += deltaTime / doubleArgument;
+                        executionTime = time;
+                    }
+
+                    if (Math.Abs(remainingTime - deltaTime) < 10e-5)
+                    {
+                        var remainingPercent = 1 - currentCommandPerformancePercent;
+                        var endTime = workTime + remainingPercent * doubleArgument;
+                        TargetObject.XPosition += ReplaceTimeAndEvaluate(xEquation, endTime) - 
+                                                 ReplaceTimeAndEvaluate(xEquation, workTime);
+                        TargetObject.YPosition += ReplaceTimeAndEvaluate(yEquation, endTime) -
+                                                 ReplaceTimeAndEvaluate(yEquation, workTime);
+                        currentCommandPerformancePercent = 0;
+                        executionTime = time;
+                    }
+
+                    if (remainingTime < deltaTime)
+                    {
+                        var remainingPercent = 1 - currentCommandPerformancePercent;
+                        var endTime = workTime + remainingPercent * doubleArgument;
+                        TargetObject.XPosition += ReplaceTimeAndEvaluate(xEquation, endTime) - 
+                                                 ReplaceTimeAndEvaluate(xEquation, workTime);
+                        TargetObject.YPosition += ReplaceTimeAndEvaluate(yEquation, endTime) -
+                                                 ReplaceTimeAndEvaluate(yEquation, workTime);
+                        executionTime += new TimeSpan(0, 0, 0, 0,
+                            (int)((1 - currentCommandPerformancePercent) * doubleArgument * 1000));
+                        currentCommandPerformancePercent = 0;
+                    }
+                }
+                else if (!xEquation.Contains('t') && !yEquation.Contains('t'))
+                {
+                    var xRangeArgument = Evaluate(xEquation);
+                    var yRangeArgument = Evaluate(yEquation);
+                    if (remainingTime > deltaTime)
+                    {
+                        var percentChange = deltaTime / doubleArgument;
+                        TargetObject.XPosition += percentChange * xRangeArgument;
+                        TargetObject.YPosition += percentChange * yRangeArgument;
+                        currentCommandPerformancePercent += percentChange;
+                        executionTime = time;
+                    }
+
+                    if (Math.Abs(remainingTime - deltaTime) < 10e-5)
+                    {
+                        var percentChange = 1 - currentCommandPerformancePercent;
+                        TargetObject.XPosition += percentChange * xRangeArgument;
+                        TargetObject.YPosition += percentChange * yRangeArgument;
+                        currentCommandPerformancePercent = 0;
+                        executionTime = time;
+                    }
+
+                    if (remainingTime < deltaTime)
+                    {
+                        var percentChange = 1 - currentCommandPerformancePercent;
+                        TargetObject.XPosition += percentChange * xRangeArgument;
+                        TargetObject.YPosition += percentChange * yRangeArgument;
+                        executionTime += new TimeSpan(0, 0, 0, 0,
+                            (int)((1 - currentCommandPerformancePercent) * doubleArgument * 1000));
+                        currentCommandPerformancePercent = 0;
+                    }
+                }
+                else throw new InvalidCommandException();
+            }
+            else if (currentCommand.StartsWith("spawn"))
+            {
+                if (arguments.Length != 6) throw new InvalidEnumArgumentException("Invalid arguments");
+                var doubleArguments = arguments.Take(4).ToArray();
+                var preparedArguments = new double[4];
+                for (int i = 0; i < preparedArguments.Length; i++)
+                    preparedArguments[i] = ParseDoubleArgument(doubleArguments[i]);
+                targetGame.Spawn(preparedArguments[0], preparedArguments[1], preparedArguments[2], preparedArguments[3],
+                    arguments[4], arguments[5]);
+            }
+            else if (currentCommand.StartsWith("execute"))
+            {
+                if (arguments.Length != 1) throw new InvalidEnumArgumentException("Invalid arguments");
+                targetGame.InvokeGameObjectScript(arguments[0], this, TargetObject);
+                Interrupt();
+            }
+            else if (currentCommand.StartsWith("asyncExecute"))
+            {
+                if (arguments.Length != 1) throw new InvalidEnumArgumentException("Invalid arguments");
+                targetGame.InvokeGameObjectScript(arguments[0], null, TargetObject);
+            }
+            else if (currentCommand.StartsWith("delay"))
+            {
+                if (arguments.Length != 1) throw new InvalidEnumArgumentException("Invalid arguments");
+                var doubleArgument = ParseDoubleArgument(arguments[0]);
+                var deltaTime = (time - executionTime).TotalSeconds;
+                var remainingTime = (1 - currentCommandPerformancePercent) * doubleArgument;
+                if (remainingTime > deltaTime)
+                {
+                    currentCommandPerformancePercent += deltaTime / doubleArgument;
+                    executionTime = time;
+                }
+
+                if (Math.Abs(remainingTime - deltaTime) < 10e-5)
+                {
+                    currentCommandPerformancePercent = 0;
+                    executionTime = time;
+                }
+
+                if (remainingTime < deltaTime)
+                {
+                    executionTime += new TimeSpan(0, 0, 0, 0,
+                        (int)((1 - currentCommandPerformancePercent) * doubleArgument * 1000));
+                    currentCommandPerformancePercent = 0;
+                }
+            }
+            else if(currentCommand.StartsWith("rotate"))
+            {
+                if(arguments.Length != 2) throw new InvalidEnumArgumentException("Invalid arguments");
+                var doubleArgument = ParseDoubleArgument(arguments[1]);
+                var rotationArgument = ParseDoubleArgument(arguments[0]);
+                var deltaTime = (time - executionTime).TotalSeconds;
+                var remainingTime = (1 - currentCommandPerformancePercent) * doubleArgument;
+                if (remainingTime > deltaTime)
+                {
+                    var percentChange = deltaTime / doubleArgument;
+                    TargetObject.Angle += percentChange * rotationArgument;
+                    currentCommandPerformancePercent += percentChange;
+                    executionTime = time;
+                }
+
+                if (Math.Abs(remainingTime - deltaTime) < 10e-5)
+                {
+                    var percentChange = 1 - currentCommandPerformancePercent;
+                    TargetObject.Angle += percentChange * rotationArgument;
+                    currentCommandPerformancePercent = 0;
+                    executionTime = time;
+                }
+
+                if (remainingTime < deltaTime)
+                {
+                    var percentChange = 1 - currentCommandPerformancePercent;
+                    TargetObject.Angle += percentChange * rotationArgument;
+                    executionTime += new TimeSpan(0, 0, 0, 0,
+                        (int)((1 - currentCommandPerformancePercent) * doubleArgument * 1000));
+                    currentCommandPerformancePercent = 0;
+                }
+            }
+            else if(currentCommand.StartsWith("scale"))
+            {
+                if(arguments.Length != 3) throw new InvalidEnumArgumentException("Invalid arguments");
+                var timeArgument = ParseDoubleArgument(arguments[2]);
+                var scaleX = ParseDoubleArgument(arguments[0]);
+                var scaleY = ParseDoubleArgument(arguments[1]);
+                var deltaTime = (time - executionTime).TotalSeconds;
+                var remainingTime = (1 - currentCommandPerformancePercent) * timeArgument;
+                if (remainingTime > deltaTime)
+                {
+                    var percentChange = deltaTime / timeArgument;
+                    TargetObject.XSize += percentChange * scaleX;
+                    TargetObject.XSize += percentChange * scaleY;
+                    currentCommandPerformancePercent += percentChange;
+                    executionTime = time;
+                }
+
+                if (Math.Abs(remainingTime - deltaTime) < 10e-5)
+                {
+                    var percentChange = 1 - currentCommandPerformancePercent;
+                    TargetObject.XSize += percentChange * scaleX;
+                    TargetObject.XSize += percentChange * scaleY;
+                    currentCommandPerformancePercent = 0;
+                    executionTime = time;
+                }
+
+                if (remainingTime < deltaTime)
+                {
+                    var percentChange = 1 - currentCommandPerformancePercent;
+                    TargetObject.XSize += percentChange * scaleX;
+                    TargetObject.XSize += percentChange * scaleY;
+                    executionTime += new TimeSpan(0, 0, 0, 0,
+                        (int)((1 - currentCommandPerformancePercent) * timeArgument * 1000));
+                    currentCommandPerformancePercent = 0;
+                }
+            }
+            else if (currentCommand == "") { }
+            else
+            {
+                throw new InvalidCommandException();
+            }
+
+            if (currentCommandPerformancePercent != 0) return;
+            if (currentCommand.Contains('}') && brackets.ContainsKey(commandPointerPosition))
+            {
+                brackets[commandPointerPosition] = (brackets[commandPointerPosition].Item1,
+                    brackets[commandPointerPosition].Item2 - 1);
+                commandPointerPosition = brackets[commandPointerPosition].Item1;
+                brackets[commandPointerPosition] = (brackets[commandPointerPosition].Item1,
+                    brackets[commandPointerPosition].Item2 - 1);
+                return;
+            }
+            commandPointerPosition++;
+        }
+
+        private double ReplaceTimeAndEvaluate(string equation, double time)
+        {
+            return equation.Replace("t", time.ToString(CultureInfo.InvariantCulture))
+                .EvalNumerical().RealPart.AsDouble();
+        }
     }
 }

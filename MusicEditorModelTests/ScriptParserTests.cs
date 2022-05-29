@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using BeatMeGameModel.EitorModels;
 using BeatMeGameModel.Exceptions;
 using BeatMeGameModel.GameModels;
 using NUnit.Framework;
@@ -40,7 +41,7 @@ roma;
             var doubleDictionary = new Dictionary<string, double>(){ ["d"] = 0, ["e"] = 0};
             var script = new GameObjectScript(file.Split('\n'));
             CompareVariables(intDictionary, doubleDictionary, script);
-            CompareProgramBlocksLength(7, script);
+            CompareProgramBlocksLength(8, script);
         }
 
         [Test]
@@ -158,7 +159,142 @@ Program
 }";
 
             Assert.Catch<BracketException>(() => new GameObjectScript(file.Split('\n')));
-        } 
+        }
+
+        [Test]
+        public void MathEquationInterpret()
+        {
+            var file = @"[Main]
+Variables{int:a, b, c}
+Program
+{
+    a = 1;
+    b = 2;
+    c = a + b;
+}";
+            var script = new GameObjectScript(file.Split('\n'));
+            var game = new Game(script, new Dictionary<string, GameObjectScript>());
+            script.Start(TimeSpan.Zero, game);
+            script.Interpret(new TimeSpan(0,0,0,1));
+            var type = typeof(GameObjectScript);
+            var intField = (Dictionary<string, int>)(type
+                .GetField("intVariablesDictionary", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(script));
+            Assert.AreEqual(3, intField["c"]);
+        }
+
+        [Test]
+        public void ForCycleInterpret()
+        {
+            var file = @"[Main]
+Variables{int:a, b}
+Program
+{
+a = 0;
+b = 2;
+for(40)
+{
+    a = a + b;
+}
+}";
+            var script = new GameObjectScript(file.Split('\n'));
+            var game = new Game(script, new Dictionary<string, GameObjectScript>());
+            script.Start(TimeSpan.Zero, game);
+            script.Interpret(new TimeSpan(0, 0, 0, 1));
+            var type = typeof(GameObjectScript);
+            var intField = (Dictionary<string, int>)(type
+                .GetField("intVariablesDictionary", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(script));
+            Assert.AreEqual(80, intField["a"]);
+        }
+
+        [Test]
+        public void ScriptInvocationInterpret()
+        {
+            var file = @"[Main]
+Variables{}
+Program
+{
+    execute(roma)
+}";
+            var roma = @"[Main]
+Variables{}
+Program
+{
+    delay(3)
+}";
+            var script = new GameObjectScript(file.Split('\n'));
+            var game = new Game(script, new Dictionary<string, GameObjectScript>(){["roma"] = new GameObjectScript(roma.Split('\n'))});
+            game.GameStart(TimeSpan.Zero);
+            Assert.AreEqual(false, script.IsEnded);
+            var type = typeof(Game);
+            var scripts = (List<GameObjectScript>)type
+                .GetField("activeScripts", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(game);
+            game.GetGameStateByTime(new TimeSpan(0,0,0,1));
+            Assert.AreEqual(false, scripts[0].IsEnded);
+            Assert.AreEqual(1, scripts.Count);
+            game.GetGameStateByTime(new TimeSpan(0,0,0,4));
+            game.GetGameStateByTime(new TimeSpan(0, 0, 0, 4, 1));
+            Assert.AreEqual(true, script.IsEnded);
+            Assert.AreEqual(true, scripts[0].IsEnded);
+            
+        }
+
+        [Test]
+        public void CheckMoveFunction()
+        {
+            var file = @"[Main]
+Variables{}
+Program
+{
+    spawn(0, 0, 1, 1, roma, move)
+}";
+            var move = @"[object]
+Variables{}
+Program
+{
+    move(100, 100, 0)
+}";
+            var script = new GameObjectScript(file.Split('\n'));
+            var game = new Game(script,
+                new Dictionary<string, GameObjectScript>() { ["move"] = new GameObjectScript(move.Split('\n')) });
+            game.GameStart();
+            game.GetGameStateByTime(new TimeSpan(0, 0, 0, 1));
+            game.GetGameStateByTime(new TimeSpan(0, 0, 0, 1, 1));
+            var type = typeof(Game);
+            var objects = (List<GameObject>)type
+                .GetField("gameObjects", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(game);
+            Assert.AreEqual(1, objects.Count);
+            Assert.AreEqual(100, objects[0].XPosition);
+            Assert.AreEqual(100, objects[0].YPosition);
+        }
+
+        [Test]
+        public void CheckMoveFunctionInParametricEquation()
+        {
+            var file = @"[Main]
+Variables{}
+Program
+{
+    spawn(0, 0, 1, 1, roma, move)
+}";
+            var move = @"[object]
+Variables{}
+Program
+{
+    move(100 * t, 100 * t, 1)
+}";
+            var script = new GameObjectScript(file.Split('\n'));
+            var game = new Game(script,
+                new Dictionary<string, GameObjectScript>() { ["move"] = new GameObjectScript(move.Split('\n')) });
+            game.GameStart();
+            game.GetGameStateByTime(new TimeSpan(0, 0, 0, 1));
+            game.GetGameStateByTime(new TimeSpan(0, 0, 0, 1, 1));
+            var type = typeof(Game);
+            var objects = (List<GameObject>)type
+                .GetField("gameObjects", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(game);
+            Assert.AreEqual(1, objects.Count);
+            Assert.AreEqual(100, objects[0].XPosition);
+            Assert.AreEqual(100, objects[0].YPosition);
+        }
 
         private void CompareVariables(Dictionary<string, int> intDictionary,
             Dictionary<string, double> doubleDictionary, GameObjectScript script)

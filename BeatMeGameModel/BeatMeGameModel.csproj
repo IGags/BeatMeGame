@@ -111,6 +111,7 @@
     <Compile Include="Attributes\VariableAttribute.cs" />
     <Compile Include="Exceptions\BracketException.cs" />
     <Compile Include="Exceptions\InterpretException.cs" />
+    <Compile Include="Exceptions\InvalidCommandException.cs" />
     <Compile Include="Exceptions\ProgramBlockException.cs" />
     <Compile Include="Exceptions\TagException.cs" />
     <Compile Include="Exceptions\VariableBlockException.cs" />
@@ -119,6 +120,7 @@
     <Compile Include="GameModels\GameObject.cs" />
     <Compile Include="GameModels\GameObjectScript.cs" />
     <Compile Include="GameModels\Modifier.cs" />
+    <Compile Include="GameModels\Player.cs" />
     <Compile Include="GameModels\ScriptConstants.cs" />
     <Compile Include="EditorTypeExtensions.cs" />
     <Compile Include="EditorModels\BeatEngine.cs" />
