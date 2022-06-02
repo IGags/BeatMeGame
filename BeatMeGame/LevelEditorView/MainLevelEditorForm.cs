@@ -36,6 +36,7 @@ namespace BeatMeGame.EditorView
 
         private void Initialize()
         {
+            TabStop = false;
             FormBorderStyle = FormBorderStyle.None;
             BackColor = Color.DarkGray;
             DoubleBuffered = true;
@@ -62,6 +63,8 @@ namespace BeatMeGame.EditorView
                 BackColor = Color.DarkGray,
                 Text = "Настройки"
             };
+
+            var paintPanel = new PaintPanel();
 
             scriptCreationButton.Click += (sender, args) =>
             {
@@ -117,6 +120,8 @@ namespace BeatMeGame.EditorView
                 scriptCreationButton.Size = settingsButton.Size;
                 scriptCreationButton.Location = new Point(scriptDeletionButton.Left,
                     scriptDeletionButton.Top - margin - settingsButton.Height);
+                paintPanel.Location = new Point(0, 2 * (ClientSize.Height) / 3);
+                paintPanel.Size = new Size(Width / 3, Height / 3);
             };
 
             Closing += (sender, args) =>
@@ -133,6 +138,7 @@ namespace BeatMeGame.EditorView
             Controls.Add(scriptList);
             Controls.Add(scriptCreationButton);
             Controls.Add(scriptDeletionButton);
+            Controls.Add(paintPanel);
         }
 
         private EditorSettings ChangeSettingsForcibly()

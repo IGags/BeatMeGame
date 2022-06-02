@@ -23,7 +23,8 @@ namespace BeatMeGame.EditorView
                 ScrollBars = ScrollBars.Both,
                 Multiline = true,
                 Font = new Font(FontFamily.GenericSansSerif, textSize, FontStyle.Regular),
-                WordWrap = false
+                WordWrap = false,
+                AcceptsTab = true
             };
 
             SizeChanged += (sender, args) =>
