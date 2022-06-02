@@ -8,13 +8,6 @@ using BeatMeGameModel.Exceptions;
 
 namespace BeatMeGameModel.GameModels
 {
-    public enum TokenType
-    {
-        Action,
-        Brackets,
-        Variable,
-        Function
-    }
     public static class StringExtensions
     {
         private static readonly char[] TrimConstants = new[] { '\n', '\r', '\t', ' ' };
@@ -29,34 +22,15 @@ namespace BeatMeGameModel.GameModels
             return outString.ToString();
         }
 
-
-        private static string BuildBracketToken(string rawString)
+        public static Tag ParseTag(this string tag)
         {
-            var bracketStack = new Stack<bool>();
-            var bracketBuilder = new StringBuilder();
-            foreach (var symbol in rawString)
+            switch (tag)
             {
-                switch (symbol)
-                {
-                    case '(':
-                        bracketStack.Push(true);
-                        break;
-                    case ')':
-                        bracketStack.Pop();
-                        break;
-                }
-
-                bracketBuilder.Append(symbol);
-                if (!bracketStack.Any()) return bracketBuilder.ToString();
+                case "ship": return Tag.Ship;
+                case "bullet": return Tag.Bullet;
+                case "laser": return Tag.Laser;
+                default: throw new ArgumentException("Invalid Object Tag");
             }
-
-            throw new BracketException("Incorrect bracket expression");
-        }
-
-        private static bool CompareStringStart(int startIndex, string rawString, string[] toCompare)
-        {
-            var skippedString = string.Concat(rawString.Skip(startIndex + 1));
-            return toCompare.Any(token => skippedString.StartsWith(token));
         }
     }
 }

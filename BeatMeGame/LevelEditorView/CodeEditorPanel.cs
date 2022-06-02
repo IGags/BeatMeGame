@@ -10,9 +10,11 @@ namespace BeatMeGame.EditorView
 {
     public class CodeEditorPanel : Panel
     {
+        public TextBox CodeEditor { get; }
+
         public CodeEditorPanel(int textSize)
         {
-            var codeEditorTextBox = new TextBox()
+            CodeEditor = new TextBox()
             {
                 ForeColor = Color.Green,
                 BackColor = Color.Black,
@@ -26,10 +28,10 @@ namespace BeatMeGame.EditorView
 
             SizeChanged += (sender, args) =>
             {
-                codeEditorTextBox.Size = ClientSize;
+                CodeEditor.Size = ClientSize;
             };
 
-            Controls.Add(codeEditorTextBox);
+            Controls.Add(CodeEditor);
         }
     }
 }

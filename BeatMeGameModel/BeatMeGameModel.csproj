@@ -115,12 +115,11 @@
     <Compile Include="Exceptions\ProgramBlockException.cs" />
     <Compile Include="Exceptions\TagException.cs" />
     <Compile Include="Exceptions\VariableBlockException.cs" />
-    <Compile Include="GameModels\CommandWrapper.cs" />
     <Compile Include="GameModels\Game.cs" />
     <Compile Include="GameModels\GameObject.cs" />
     <Compile Include="GameModels\GameObjectScript.cs" />
-    <Compile Include="GameModels\Modifier.cs" />
-    <Compile Include="GameModels\Player.cs" />
+    <Compile Include="GameModels\IPlayer.cs" />
+    <Compile Include="GameModels\PlayerStub.cs" />
     <Compile Include="GameModels\ScriptConstants.cs" />
     <Compile Include="EditorTypeExtensions.cs" />
     <Compile Include="EditorModels\BeatEngine.cs" />
@@ -136,9 +135,11 @@
     <Compile Include="ConformityData.cs" />
     <Compile Include="EditorModels\MusicEditorModel.cs" />
     <Compile Include="IOWorkers\BeatDetectionType.cs" />
+    <Compile Include="IOWorkers\LevelAssetsParser.cs" />
     <Compile Include="IOWorkers\LevelFolderWorker.cs" />
     <Compile Include="IOWorkers\LevelSavePacker.cs" />
     <Compile Include="IOWorkers\LevelSaveParsers.cs" />
+    <Compile Include="LevelEditorModels\EditorModel.cs" />
     <Compile Include="ManifestData.cs" />
     <Compile Include="IOWorkers\EditorSettings.cs" />
     <Compile Include="MenuBGModels\SpectrumBarsModel.cs" />

@@ -29,7 +29,6 @@ Program
 {
     a = b; 
     roma;
-    dodik;
     for(14){
 a;
 b;
@@ -41,7 +40,7 @@ roma;
             var doubleDictionary = new Dictionary<string, double>(){ ["d"] = 0, ["e"] = 0};
             var script = new GameObjectScript(file.Split('\n'));
             CompareVariables(intDictionary, doubleDictionary, script);
-            CompareProgramBlocksLength(8, script);
+            CompareProgramBlocksLength(7, script);
         }
 
         [Test]
@@ -64,11 +63,11 @@ Program{}";
             var file =
                 @"[Main]
 Variables
-{string:a;
-bool:b;}
+{int:a;
+double:b;}
 Program{}";
-            var intDictionary = new Dictionary<string, int>();
-            var doubleDictionary = new Dictionary<string, double>();
+            var intDictionary = new Dictionary<string, int>(){["a"]= 0};
+            var doubleDictionary = new Dictionary<string, double>() { ["b"] = 0 };
             var script = new GameObjectScript(file.Split('\n'));
             CompareVariables(intDictionary, doubleDictionary, script);
         }
@@ -79,7 +78,7 @@ Program{}";
             var file =
                 @"[Main]
 Variables{
-string: self;
+double: self;
 Program{}";
             Assert.Catch<VariableBlockException>(() => new GameObjectScript(file.Split('\n')));
         }
@@ -173,7 +172,7 @@ Program
     c = a + b;
 }";
             var script = new GameObjectScript(file.Split('\n'));
-            var game = new Game(script, new Dictionary<string, GameObjectScript>());
+            var game = new Game(script, new Dictionary<string, GameObjectScript>(), new PlayerStub(0, 0));
             script.Start(TimeSpan.Zero, game);
             script.Interpret(new TimeSpan(0,0,0,1));
             var type = typeof(GameObjectScript);
@@ -197,13 +196,40 @@ for(40)
 }
 }";
             var script = new GameObjectScript(file.Split('\n'));
-            var game = new Game(script, new Dictionary<string, GameObjectScript>());
+            var game = new Game(script, new Dictionary<string, GameObjectScript>(), new PlayerStub(0, 0));
             script.Start(TimeSpan.Zero, game);
             script.Interpret(new TimeSpan(0, 0, 0, 1));
             var type = typeof(GameObjectScript);
             var intField = (Dictionary<string, int>)(type
                 .GetField("intVariablesDictionary", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(script));
             Assert.AreEqual(80, intField["a"]);
+        }
+
+        [Test]
+        public void DoubleCycleTest()
+        {
+            var file = @"[Main]
+Variables{int:a, b}
+Program
+{
+a = 0;
+b = 2;
+for(40)
+{
+    for(2)
+    {
+        a = a + b;   
+    }
+}
+}";
+            var script = new GameObjectScript(file.Split('\n'));
+            var game = new Game(script, new Dictionary<string, GameObjectScript>(), new PlayerStub(0, 0));
+            script.Start(TimeSpan.Zero, game);
+            script.Interpret(new TimeSpan(0, 0, 0, 1));
+            var type = typeof(GameObjectScript);
+            var intField = (Dictionary<string, int>)(type
+                .GetField("intVariablesDictionary", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(script));
+            Assert.AreEqual(160, intField["a"]);
         }
 
         [Test]
@@ -222,7 +248,7 @@ Program
     delay(3)
 }";
             var script = new GameObjectScript(file.Split('\n'));
-            var game = new Game(script, new Dictionary<string, GameObjectScript>(){["roma"] = new GameObjectScript(roma.Split('\n'))});
+            var game = new Game(script, new Dictionary<string, GameObjectScript>(){["roma"] = new GameObjectScript(roma.Split('\n'))}, new PlayerStub(0, 0));
             game.GameStart(TimeSpan.Zero);
             Assert.AreEqual(false, script.IsEnded);
             var type = typeof(Game);
@@ -245,7 +271,7 @@ Program
 Variables{}
 Program
 {
-    spawn(0, 0, 1, 1, roma, move)
+    spawn(0, 0, 1, 1, 0, roma, move)
 }";
             var move = @"[object]
 Variables{}
@@ -253,18 +279,7 @@ Program
 {
     move(100, 100, 0)
 }";
-            var script = new GameObjectScript(file.Split('\n'));
-            var game = new Game(script,
-                new Dictionary<string, GameObjectScript>() { ["move"] = new GameObjectScript(move.Split('\n')) });
-            game.GameStart();
-            game.GetGameStateByTime(new TimeSpan(0, 0, 0, 1));
-            game.GetGameStateByTime(new TimeSpan(0, 0, 0, 1, 1));
-            var type = typeof(Game);
-            var objects = (List<GameObject>)type
-                .GetField("gameObjects", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(game);
-            Assert.AreEqual(1, objects.Count);
-            Assert.AreEqual(100, objects[0].XPosition);
-            Assert.AreEqual(100, objects[0].YPosition);
+            CompareObjectState(file, move, 1, 100, 100, 0, 1);
         }
 
         [Test]
@@ -274,7 +289,7 @@ Program
 Variables{}
 Program
 {
-    spawn(0, 0, 1, 1, roma, move)
+    spawn(0, 0, 1, 1, 0, roma, move)
 }";
             var move = @"[object]
 Variables{}
@@ -282,19 +297,83 @@ Program
 {
     move(100 * t, 100 * t, 1)
 }";
-            var script = new GameObjectScript(file.Split('\n'));
-            var game = new Game(script,
-                new Dictionary<string, GameObjectScript>() { ["move"] = new GameObjectScript(move.Split('\n')) });
+            CompareObjectState(file, move, 1, 100, 100, 0, 1);
+        }
+
+        [Test]
+        public void CheckObjectReference()
+        {
+            var file = @"[Main]
+Variables{}
+Program
+{
+    spawn(0,0,1,1,0, roma, move)
+}";
+            var check = @"[object]
+Variables{}
+Program
+{
+    move(player1X, player1Y, 0);
+}";
+            CompareObjectState(file, check, 1, 15, 20, 0, 1, new PlayerStub(15, 20));
+
+        }
+
+        [Test]
+        public void CheckMethodSequence()
+        {
+            var file = @"[Main]
+Variables{}
+Program
+{
+    spawn(0,0,1,1,0, roma, move)
+}";
+            var check = @"[object]
+Variables{}
+Program
+{
+    move(20, 20, 0);
+    move(10, 11, 0);
+}";
+            CompareObjectState(file, check, 1, 30, 31, 0, 1, new PlayerStub(15, 20));
+        }
+
+        [Test]
+        public void CheckNotFullPerformance()
+        {
+            var file = @"[Main]
+Variables{}
+Program
+{
+    spawn(0,0,1,1,0, roma, move)
+}";
+            var check = @"[object]
+Variables{}
+Program
+{
+    move(20, 20, 2);
+}";
+            CompareObjectState(file, check, 1, 10.01, 10.01, 0, 1, new PlayerStub(15, 20));
+        }
+
+        private void CompareObjectState(string main, string objectScript, int expectedCount, double expectedX, double expectedY, double expectedAngle, int waitTime, PlayerStub playerStub = null)
+        {
+            var script = new GameObjectScript(main.Split('\n'));
+            var scriptDictionary = new Dictionary<string, GameObjectScript>()
+                { ["move"] = new GameObjectScript(objectScript.Split('\n')) };
+            var game = playerStub != null ? new Game(script, scriptDictionary, playerStub) : new Game(script, scriptDictionary, new PlayerStub(0, 0));
             game.GameStart();
-            game.GetGameStateByTime(new TimeSpan(0, 0, 0, 1));
-            game.GetGameStateByTime(new TimeSpan(0, 0, 0, 1, 1));
+            game.GetGameStateByTime(new TimeSpan(0, 0, 0, waitTime));
+            game.GetGameStateByTime(new TimeSpan(0, 0, 0, waitTime, 1));
             var type = typeof(Game);
             var objects = (List<GameObject>)type
                 .GetField("gameObjects", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(game);
-            Assert.AreEqual(1, objects.Count);
-            Assert.AreEqual(100, objects[0].XPosition);
-            Assert.AreEqual(100, objects[0].YPosition);
+            Assert.AreEqual(expectedCount, objects.Count);
+            Assert.AreEqual(expectedX, objects[0].XPosition);
+            Assert.AreEqual(expectedY, objects[0].YPosition);
+            Assert.AreEqual(expectedAngle, objects[0].Angle);
         }
+
 
         private void CompareVariables(Dictionary<string, int> intDictionary,
             Dictionary<string, double> doubleDictionary, GameObjectScript script)

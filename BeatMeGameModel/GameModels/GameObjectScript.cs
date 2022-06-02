@@ -24,7 +24,7 @@ namespace BeatMeGameModel.GameModels
     public class GameObjectScript
     {
 
-        public GameObject TargetObject { get; set; }
+        public GameObject TargetObject { get; private set; }
         public bool IsEnded { get; private set; }
         public AccessLevel ScriptAccessLevel { get; private set; }
 
@@ -51,9 +51,33 @@ namespace BeatMeGameModel.GameModels
             Initialize(commandSequence);
         }
 
+        private GameObjectScript(GameObjectScript invoker, Game targetGame, Dictionary<int, (int, int)> brackets,
+            double currentCommandPerformancePercent, TimeSpan startTime, TimeSpan executionTime,
+            int commandPointerPosition, string[] commandSequence, string[] extractedCommands, bool isStarted,
+            Dictionary<string, int> intVariablesDictionary, Dictionary<string, double> doubleVariablesDictionary,
+            AccessLevel scriptAccessLevel, GameObject targetObject)
+        {
+            this.invoker = invoker;
+            this.targetGame = targetGame;
+            this.brackets = brackets.ToDictionary(key => key.Key, value => value.Value);
+            this.currentCommandPerformancePercent = currentCommandPerformancePercent;
+            this.startTime = startTime;
+            this.executionTime = executionTime;
+            this.commandPointerPosition = commandPointerPosition;
+            this.commandSequence = commandSequence;
+            this.extractedCommands = extractedCommands;
+            this.isStarted = isStarted;
+            this.intVariablesDictionary = intVariablesDictionary.ToDictionary(key => key.Key, value => value.Value);
+            this.doubleVariablesDictionary = doubleVariablesDictionary.ToDictionary(key => key.Key, value => value.Value);
+            this.ScriptAccessLevel = scriptAccessLevel;
+            this.TargetObject = targetObject;
+        }
+
         public GameObjectScript Copy()
         {
-            return new GameObjectScript(commandSequence);
+            return new GameObjectScript(invoker, targetGame, brackets, currentCommandPerformancePercent, startTime,
+                executionTime, commandPointerPosition, commandSequence, extractedCommands, isStarted,
+                intVariablesDictionary, doubleVariablesDictionary, ScriptAccessLevel, TargetObject);
         }
 
         public void Start(TimeSpan time, Game targetGame, GameObject targetObject = null, GameObjectScript invoker = null)
@@ -65,6 +89,7 @@ namespace BeatMeGameModel.GameModels
             startTime = time;
             isStarted = true;
             TargetObject = targetObject;
+            targetObject?.IncreaseReferenceCount();
         }
 
         public void Interrupt()
@@ -103,6 +128,7 @@ namespace BeatMeGameModel.GameModels
                 {
                     invoker?.Resume(executionTime);
                     IsEnded = true;
+                    TargetObject.DecreaseReferenceCount();
                     return;
                 }
 
@@ -420,10 +446,19 @@ namespace BeatMeGameModel.GameModels
 
         private string ChangeVariables(string rawExpression)
         {
-            rawExpression = ReplaceAllIntersections(rawExpression, "player1X", targetGame.Player1.XPosition);
-            rawExpression = ReplaceAllIntersections(rawExpression, "player2X", targetGame.Player2.XPosition);
-            rawExpression = ReplaceAllIntersections(rawExpression, "player1Y", targetGame.Player1.YPosition);
-            rawExpression = ReplaceAllIntersections(rawExpression, "player2Y", targetGame.Player2.YPosition);
+            rawExpression = ReplaceAllIntersections(rawExpression, "player1X", targetGame.Player1.X);
+            rawExpression = ReplaceAllIntersections(rawExpression, "player1Y", targetGame.Player1.Y);
+            if (targetGame.Player2 != null)
+            {
+                rawExpression = ReplaceAllIntersections(rawExpression, "player2Y", targetGame.Player2.Y);
+                rawExpression = ReplaceAllIntersections(rawExpression, "player2X", targetGame.Player2.X);
+            }
+            if (ScriptAccessLevel == AccessLevel.ObjectScript)
+            {
+                rawExpression = ReplaceAllIntersections(rawExpression, "X", TargetObject.XPosition);
+                rawExpression = ReplaceAllIntersections(rawExpression, "Y", TargetObject.YPosition);
+                rawExpression = ReplaceAllIntersections(rawExpression, "Angle", TargetObject.Angle);
+            }
             foreach (var key in intVariablesDictionary.Keys)
             {
                 rawExpression = ReplaceAllIntersections(rawExpression, key, intVariablesDictionary[key]);
@@ -486,13 +521,13 @@ namespace BeatMeGameModel.GameModels
             var arguments = ParseCommandArguments(currentCommand);
             if (currentCommand.StartsWith("spawn"))
             {
-                if (arguments.Length != 6) throw new InvalidEnumArgumentException("Invalid arguments");
-                var doubleArguments = arguments.Take(4).ToArray();
-                var preparedArguments = new double[4];
+                if (arguments.Length != 8) throw new InvalidEnumArgumentException("Invalid arguments");
+                var doubleArguments = arguments.Take(5).ToArray();
+                var preparedArguments = new double[5];
                 for (int i = 0; i < preparedArguments.Length; i++)
                     preparedArguments[i] = ParseDoubleArgument(doubleArguments[i]);
-                targetGame.Spawn(preparedArguments[0], preparedArguments[1], preparedArguments[2], preparedArguments[3],
-                    arguments[4], arguments[5]);
+                targetGame.Spawn(preparedArguments[0], preparedArguments[1], preparedArguments[2], preparedArguments[3], preparedArguments[4],
+                    arguments[5], arguments[6], arguments[7].ParseTag());
             }
             else if (currentCommand.StartsWith("delay"))
             {
@@ -671,13 +706,13 @@ namespace BeatMeGameModel.GameModels
             }
             else if (currentCommand.StartsWith("spawn"))
             {
-                if (arguments.Length != 6) throw new InvalidEnumArgumentException("Invalid arguments");
-                var doubleArguments = arguments.Take(4).ToArray();
-                var preparedArguments = new double[4];
+                if (arguments.Length != 8) throw new InvalidEnumArgumentException("Invalid arguments");
+                var doubleArguments = arguments.Take(5).ToArray();
+                var preparedArguments = new double[5];
                 for (int i = 0; i < preparedArguments.Length; i++)
                     preparedArguments[i] = ParseDoubleArgument(doubleArguments[i]);
-                targetGame.Spawn(preparedArguments[0], preparedArguments[1], preparedArguments[2], preparedArguments[3],
-                    arguments[4], arguments[5]);
+                targetGame.Spawn(preparedArguments[0], preparedArguments[1], preparedArguments[2], preparedArguments[3], preparedArguments[4],
+                    arguments[5], arguments[6], arguments[7].ParseTag());
             }
             else if (currentCommand.StartsWith("execute"))
             {

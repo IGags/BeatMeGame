@@ -82,13 +82,19 @@
     <Compile Include="EditorView\BeatIndicatorPanel.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="EditorView\CodeEditorPanel.cs">
+    <Compile Include="LevelEditorView\CodeEditorPanel.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="EditorView\EditorDialogForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="EditorView\EditorElementsPanel.cs">
+    <Compile Include="LevelEditorView\PaintPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="LevelEditorView\ScriptCreationDialogForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="LevelEditorView\ScriptsPanel.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="EditorView\EditorExitDialogForm.cs">
@@ -97,11 +103,11 @@
     <Compile Include="EditorView\EditorLoadingForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="EditorView\EditorSettingsForm.cs">
+    <Compile Include="LevelEditorView\EditorSettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="EditorView\MainEditorFormManager.cs" />
-    <Compile Include="EditorView\MainLevelEditorForm.cs">
+    <Compile Include="LevelEditorView\MainLevelEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="EditorView\MusicEditorForm.cs">
