@@ -6,6 +6,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BeatMeGame.GameView;
 using BeatMeGame.LevelEditorView;
 using BeatMeGameModel;
 using BeatMeGameModel.IOWorkers;
@@ -17,6 +18,7 @@ namespace BeatMeGame.EditorView
     {
         private readonly EditorSettings settings;
         private readonly EditorModel model;
+        private readonly Dictionary<string, Bitmap> assets;
 
         public MainLevelEditorForm(Form parent, LevelSave save)
         {
@@ -31,6 +33,7 @@ namespace BeatMeGame.EditorView
 
             MdiParent = parent;
             model = new EditorModel(save, LevelAssetsParser.ParseScripts(save.LevelName));
+            assets = BitmapIOParser.ParseSavedBitmaps(model.Save.LevelName);
             Initialize();
         }
 
@@ -40,6 +43,8 @@ namespace BeatMeGame.EditorView
             FormBorderStyle = FormBorderStyle.None;
             BackColor = Color.DarkGray;
             DoubleBuffered = true;
+            SetStyle(ControlStyles.StandardDoubleClick, true);
+            SetStyle(ControlStyles.StandardClick, true);
             var margin = ClientSize.Height / 70;
 
             var codeEditor = new CodeEditorPanel(settings.TextSize);
@@ -55,6 +60,11 @@ namespace BeatMeGame.EditorView
                 Text = "Создать Скрипт",
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.DarkGray
+            };
+
+            var bitmapList = new AssetList(assets)
+            {
+                BackColor = Color.Gray
             };
 
             var settingsButton = new Button()
@@ -111,7 +121,6 @@ namespace BeatMeGame.EditorView
                 codeEditor.Size = new Size(Size.Width / 3, Size.Height / 3);
                 codeEditor.Location = new Point(2 * Size.Width / 3, 2 * Size.Height / 3);
                 settingsButton.Size = new Size(ClientSize.Width / 30, ClientSize.Width / 30);
-                settingsButton.Location = new Point(ClientSize.Width / 50, ClientSize.Height / 50);
                 scriptList.Size = new Size(Size.Width / 5, 2 * Size.Height / 3);
                 scriptList.Location = new Point(4 * Size.Width / 5, 0);
                 scriptDeletionButton.Location = new Point(scriptList.Left - margin - settingsButton.Width,
@@ -120,8 +129,11 @@ namespace BeatMeGame.EditorView
                 scriptCreationButton.Size = settingsButton.Size;
                 scriptCreationButton.Location = new Point(scriptDeletionButton.Left,
                     scriptDeletionButton.Top - margin - settingsButton.Height);
-                paintPanel.Location = new Point(0, 2 * (ClientSize.Height) / 3);
+                paintPanel.Location = new Point(0, codeEditor.Top);
                 paintPanel.Size = new Size(Width / 3, Height / 3);
+                settingsButton.Location = new Point(scriptCreationButton.Left, ClientSize.Height / 50);
+                bitmapList.Size = paintPanel.Size;
+                bitmapList.Location = new Point(paintPanel.Right, paintPanel.Top);
             };
 
             Closing += (sender, args) =>
@@ -139,6 +151,7 @@ namespace BeatMeGame.EditorView
             Controls.Add(scriptCreationButton);
             Controls.Add(scriptDeletionButton);
             Controls.Add(paintPanel);
+            Controls.Add(bitmapList);
         }
 
         private EditorSettings ChangeSettingsForcibly()
