@@ -4,16 +4,23 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using BeatMeGameModel.BeatVertexes;
 using BeatMeGameModel.EitorModels;
 using BeatMeGameModel.Exceptions;
 using BeatMeGameModel.GameModels;
+using BeatMeGameModel.IOWorkers;
 using NUnit.Framework;
+using NUnit.Framework.Internal;
+using SoundEngineLibrary;
 
 namespace MusicEditorModelTests
 {
     [TestFixture]
     class ScriptParserTests
     {
+        private BeatEngine engine =
+            new BeatEngine(new SoundEngineTread(@"TestAssets\1.mp3", ThreadOptions.StaticThread, FFTExistance.Exist),
+                new Dictionary<TimeSpan, BeatVertex>(), BeatDetectionType.BPM, TimeSpan.Zero);
         [Test]
         public void ParseCorrectFile()
         {
@@ -172,7 +179,7 @@ Program
     c = a + b;
 }";
             var script = new GameObjectScript(file.Split('\n'));
-            var game = new Game(script, new Dictionary<string, GameObjectScript>(), new PlayerStub(0, 0));
+            var game = new Game(script, new Dictionary<string, GameObjectScript>(), new PlayerStub(0, 0), engine);
             script.Start(TimeSpan.Zero, game);
             script.Interpret(new TimeSpan(0,0,0,1));
             var type = typeof(GameObjectScript);
@@ -196,7 +203,7 @@ for(40)
 }
 }";
             var script = new GameObjectScript(file.Split('\n'));
-            var game = new Game(script, new Dictionary<string, GameObjectScript>(), new PlayerStub(0, 0));
+            var game = new Game(script, new Dictionary<string, GameObjectScript>(), new PlayerStub(0, 0), engine);
             script.Start(TimeSpan.Zero, game);
             script.Interpret(new TimeSpan(0, 0, 0, 1));
             var type = typeof(GameObjectScript);
@@ -223,7 +230,7 @@ for(40)
 }
 }";
             var script = new GameObjectScript(file.Split('\n'));
-            var game = new Game(script, new Dictionary<string, GameObjectScript>(), new PlayerStub(0, 0));
+            var game = new Game(script, new Dictionary<string, GameObjectScript>(), new PlayerStub(0, 0), engine);
             script.Start(TimeSpan.Zero, game);
             script.Interpret(new TimeSpan(0, 0, 0, 1));
             var type = typeof(GameObjectScript);
@@ -248,7 +255,7 @@ Program
     delay(3)
 }";
             var script = new GameObjectScript(file.Split('\n'));
-            var game = new Game(script, new Dictionary<string, GameObjectScript>(){["roma"] = new GameObjectScript(roma.Split('\n'))}, new PlayerStub(0, 0));
+            var game = new Game(script, new Dictionary<string, GameObjectScript>(){["roma"] = new GameObjectScript(roma.Split('\n'))}, new PlayerStub(0, 0), engine);
             game.GameStart(TimeSpan.Zero);
             Assert.AreEqual(false, script.IsEnded);
             var type = typeof(Game);
@@ -335,7 +342,7 @@ Program
     move(20, 20, 0);
     move(10, 11, 0);
 }";
-            CompareObjectState(file, check, 1, 30, 31, 0, 1, new PlayerStub(15, 20));
+            CompareObjectState(file, check, 1, 30, 31, 0, 1, new PlayerStub(15, 20), Tag.Ship);
         }
 
         [Test]
@@ -361,7 +368,7 @@ Program
             var script = new GameObjectScript(main.Split('\n'));
             var scriptDictionary = new Dictionary<string, GameObjectScript>()
                 { ["move"] = new GameObjectScript(objectScript.Split('\n')) };
-            var game = playerStub != null ? new Game(script, scriptDictionary, playerStub) : new Game(script, scriptDictionary, new PlayerStub(0, 0));
+            var game = playerStub != null ? new Game(script, scriptDictionary, playerStub, engine) : new Game(script, scriptDictionary, new PlayerStub(0, 0), engine);
             game.GameStart();
             game.GetGameStateByTime(new TimeSpan(0, 0, 0, waitTime));
             game.GetGameStateByTime(new TimeSpan(0, 0, 0, waitTime, 1));

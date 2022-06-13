@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,53 +12,72 @@ namespace BeatMeGame.LevelEditorView
 {
     class PaintPanel : Panel
     {
-        private Bitmap editorBitmap = new Bitmap(32, 32);
+        public Bitmap EditorBitmap { get; private set; } = new Bitmap(32, 32);
         private float pixelSize;
         private Color selectedColor = Color.Black;
+        private readonly CheckBox gridVisualizationCheckBox;
 
         public PaintPanel()
         {
-            var colorButtonsHorizontalMargin = editorBitmap.Width * pixelSize;
-            pixelSize = (float)Height / editorBitmap.Height;
+            var colorButtonsHorizontalMargin = EditorBitmap.Width * pixelSize;
+            pixelSize = (float)Height / EditorBitmap.Height;
             DoubleBuffered = true;
             InitializeColorButtons();
+
+            gridVisualizationCheckBox = new CheckBox()
+            {
+                Text = "Рисовать сетку"
+            };
+
+            gridVisualizationCheckBox.CheckStateChanged += (sender, args) =>
+            {
+                Invalidate();
+            };
 
             Click += (sender, args) =>
             {
                 var mouse = (MouseEventArgs)args;
                 if(mouse.X > ClientSize.Height) return;
-                editorBitmap.SetPixel(editorBitmap.Width * mouse.X / ClientSize.Height, editorBitmap.Height * mouse.Y / ClientSize.Height, selectedColor);
+                EditorBitmap.SetPixel(EditorBitmap.Width * mouse.X / ClientSize.Height, EditorBitmap.Height * mouse.Y / ClientSize.Height, selectedColor);
                 Invalidate();
             };
-
             SizeChanged += (sender, args) =>
             {
-                pixelSize = (float)Height / editorBitmap.Height;
+                pixelSize = (float)Height / EditorBitmap.Height;
+                gridVisualizationCheckBox.Location =
+                    new Point((int)(EditorBitmap.Width * pixelSize) + 30, 9 * Height / 10);
                 InitializeColorButtons();
             };
 
-            //Controls.Add(paintingArea);
+            Controls.Add(gridVisualizationCheckBox);
+        }
+
+        public void UpdateBitmap(Bitmap bitmap)
+        {
+            EditorBitmap = bitmap;
+            pixelSize = (float)Height / EditorBitmap.Height;
+            Invalidate();
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
             e.Graphics.FillRectangle(new SolidBrush(Color.Gray), new Rectangle(0, 0, Width, Height));
-            DrawGrid(e.Graphics);
+            if(gridVisualizationCheckBox.Checked) DrawGrid(e.Graphics);
             e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
             e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            e.Graphics.DrawImage(editorBitmap, new Rectangle(0, 0, this.Height, this.Height)); 
+            e.Graphics.DrawImage(EditorBitmap, new Rectangle(0, 0, this.Height, this.Height)); 
         }
 
         private void DrawGrid(Graphics g)
         {
             var pen = new Pen(Color.DarkGreen, 0.1f);
-            for (int i = 1; i < editorBitmap.Height; i++)
+            for (int i = 1; i < EditorBitmap.Height; i++)
             {
                 g.DrawLine(pen, i * pixelSize, 0, i * pixelSize, Height);
             }
 
-            for (int i = 1; i < editorBitmap.Height; i++)
+            for (int i = 1; i < EditorBitmap.Width; i++)
             {
                 g.DrawLine(pen, 0, i * pixelSize, Height, i * pixelSize);
             }
@@ -65,11 +85,12 @@ namespace BeatMeGame.LevelEditorView
 
         private void InitializeColorButtons()
         {
-            var verticalCount = 7;
-            var horizontalCount = 8;
+            var verticalCount = 12;
+            var horizontalCount = 15;
             Controls.Clear();
+            Controls.Add(gridVisualizationCheckBox);
             var colorButtonSize = new Size(Width / 40, Width / 40);
-            var colorButtonsHorizontalMargin = (int)(Width -  editorBitmap.Width * pixelSize - horizontalCount * colorButtonSize.Width) / (horizontalCount + 1);
+            var colorButtonsHorizontalMargin = (int)(Width -  EditorBitmap.Width * pixelSize - horizontalCount * colorButtonSize.Width) / (horizontalCount + 1);
             var colorButtonsVerticalMargin = (int)(Height * 0.8 - colorButtonSize.Height * verticalCount) / verticalCount;
             colorButtonsHorizontalMargin = colorButtonsHorizontalMargin >= 0 ? colorButtonsHorizontalMargin : 0;
             colorButtonsVerticalMargin = colorButtonsVerticalMargin >= 0 ? colorButtonsVerticalMargin : 0;
@@ -83,10 +104,10 @@ namespace BeatMeGame.LevelEditorView
                     {
                         FlatStyle = FlatStyle.Flat,
                         Size = colorButtonSize,
-                        Location = new Point((int)(editorBitmap.Width * pixelSize) + (i + 1) * colorButtonsHorizontalMargin 
+                        Location = new Point((int)(EditorBitmap.Width * pixelSize) + (i + 1) * colorButtonsHorizontalMargin 
                             + i * colorButtonSize.Width,
                             (j + 1) * colorButtonsVerticalMargin + colorButtonSize.Height * j),
-                        BackColor = Color.FromArgb(255, random.Next(0, 255), random.Next(0, 255), random.Next(0, 255)),
+                        BackColor = Color.FromArgb(0, random.Next(0, 255), random.Next(0, 255), random.Next(0, 255)),
                     };
 
                     button.Click += (sender, args) =>

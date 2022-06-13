@@ -42,10 +42,22 @@ namespace BeatMeGameModel.EitorModels //TODO: FFT парсер созадёт д
             if (isShutdownAfterSecond) WaitOneSecondAsync();
         }
 
-        public void Pause()
+        public void Stop()
         {
             asyncEventInvoker.Abort();
             workTread.Stop();
+        }
+
+        public void Pause()
+        {
+            asyncEventInvoker.Interrupt();
+            workTread.Pause();
+        }
+
+        public void Resume()
+        {
+            asyncEventInvoker.Start();
+            workTread.Run();
         }
 
         private void FillVertexQueue(Dictionary<TimeSpan, BeatVertex> beat, TimeSpan position)
@@ -74,7 +86,7 @@ namespace BeatMeGameModel.EitorModels //TODO: FFT парсер созадёт д
                     workTread.FFT.LowEdge = ((FFTVertex)lastVertex).BotFrequency;
                     workTread.FFT.ThresholdValue = ((FFTVertex)lastVertex).ThresholdValue;
                 }
-                Clear();
+                Clear?.Invoke();
                 var isDeletion = false;
                 while (vertexQueue.Any() && vertexQueue.Peek().Time < workTread.GetTime())
                 {
@@ -116,7 +128,7 @@ namespace BeatMeGameModel.EitorModels //TODO: FFT парсер созадёт д
             var startTime = TimeSpan.Zero;
             while (true)
             {
-                Clear();
+                Clear?.Invoke();
                 var isDeletion = false;
                 while (vertexQueue.Any() && vertexQueue.Peek().Time < workTread.GetTime())
                 {
@@ -127,10 +139,10 @@ namespace BeatMeGameModel.EitorModels //TODO: FFT парсер созадёт д
                             bpm = ((BPMVertex)vertex).BPM;
                             startTime = vertex.Time;
                             beatCount = 0;
-                            OnBeat();
+                            OnBeat?.Invoke();
                             break;
                         case VertexType.Artificial:
-                            OnBeat();
+                            OnBeat?.Invoke();
                             break;
                         case VertexType.Deletion:
                             isDeletion = true;
@@ -158,7 +170,7 @@ namespace BeatMeGameModel.EitorModels //TODO: FFT парсер созадёт д
         private async Task WaitOneSecondAsync()
         {
             await Task.Delay(1020);
-            Shutdown();
+            Shutdown?.Invoke();
         }
     }
 }

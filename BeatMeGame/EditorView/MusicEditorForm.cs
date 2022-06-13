@@ -217,7 +217,7 @@ namespace BeatMeGame.EditorView
 
             saveAndExitButton.Click += (sender, args) =>
             {
-                var dialog = new EditorExitDialogForm(this);
+                var dialog = new EditorExitDialogForm(true, this);
                 var result = dialog.ShowDialog();
                 switch (result)
                 {

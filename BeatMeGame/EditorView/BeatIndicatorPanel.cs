@@ -43,10 +43,10 @@ namespace BeatMeGame.EditorView
         protected override void OnPaint(PaintEventArgs e)
         {
             var graphics = e.Graphics;
-            graphics.DrawImage(currentBitmap, new Rectangle(0, 0, this.Width, Height));
-            base.OnPaint(e);
             graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
             graphics.CompositingQuality = CompositingQuality.HighQuality;
+            graphics.DrawImage(currentBitmap, new Rectangle(0, 0, this.Width, Height));
+            base.OnPaint(e);
         }
     }
 }

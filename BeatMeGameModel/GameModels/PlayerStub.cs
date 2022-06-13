@@ -10,7 +10,7 @@ namespace BeatMeGameModel.GameModels
     {
         public double X { get; set; }
         public double Y { get; set; }
-        public double Velocity { get; }
+        public double Velocity { get; } = 10;
         public int SuperPercent { get; set; }
         public bool IsSuperDecreasing { get; set; }
         public Game TargetGame { get; set; }

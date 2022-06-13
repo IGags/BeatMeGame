@@ -17,26 +17,33 @@ namespace BeatMeGameModel.GameModels
         public bool IsPlayerCollisionEnabled { get; set; }
         public event Action PlayerDeath;
 
-        public const double PlayerSize = 50;
+        public const double PlayerSize = 10;
         public const double PlayerHitBoxSize = 7;
         public const double GameWidth = 1000;
         public const double GameHeight = 1000;
 
+        private BeatEngine beatEngine;
         private readonly Stopwatch inGameTimeStopwatch = new Stopwatch();
         private GameObjectScript mainScript;
         private readonly Dictionary<string, GameObjectScript> scripts;
-        private List<GameObject> gameObjects = new List<GameObject>();
+        public List<GameObject> gameObjects { get; private set; } = new List<GameObject>();
         private List<GameObjectScript> activeScripts = new List<GameObjectScript>();
         private TimeSpan lastAccessTime;
         private long id;
-
-        public Game(GameObjectScript mainScript, Dictionary<string, GameObjectScript> scripts, IPlayer player1, IPlayer player2 = null)
+        private List<GameObjectScript> additionalScripts = new List<GameObjectScript>();
+        public Game(GameObjectScript mainScript, Dictionary<string, GameObjectScript> scripts, IPlayer player1, BeatEngine beatEngine, IPlayer player2 = null)
         {
+            this.beatEngine = beatEngine;
             Player1 = player1;
             Player2 = player2;
             this.mainScript = mainScript;
             inGameTimeStopwatch.Restart();
             this.scripts = scripts;
+            this.beatEngine.OnBeat += () =>
+            {
+                Player1?.Shoot();
+                Player2?.Shoot();
+            };
         }
 
         //DeepCopy
@@ -70,16 +77,17 @@ namespace BeatMeGameModel.GameModels
 
         public void InvokeGameObjectScript(string scriptName, GameObjectScript invoker, GameObject targetObject)
         {
-            if (!scripts.ContainsKey(scriptName) || scripts[scriptName].ScriptAccessLevel != invoker.ScriptAccessLevel)
+            if (!scripts.ContainsKey(scriptName))
                 throw new InvalidOperationException("Cannot invoke script with different access level");
             var script = scripts[scriptName].Copy();
             script.Start(inGameTimeStopwatch.Elapsed, this, targetObject, invoker);
-            activeScripts.Add(script);
+            additionalScripts.Add(script);
         }
 
         public void GameStart()
         {
             inGameTimeStopwatch.Restart();
+            beatEngine.Play(false);
             mainScript.Start(inGameTimeStopwatch.Elapsed, this);
         }
 
@@ -96,12 +104,14 @@ namespace BeatMeGameModel.GameModels
         public void Pause()
         {
             IsPaused = true;
+            beatEngine.Pause();
             inGameTimeStopwatch.Stop();
         }
 
         public void Resume()
         {
             IsPaused = false;
+            beatEngine.Resume();
             inGameTimeStopwatch.Start();
         }
 
@@ -126,7 +136,7 @@ namespace BeatMeGameModel.GameModels
         public void PlayerMove(bool isSecondPlayer, Directions direction)
         {
             var player = isSecondPlayer ? Player2 : Player1;
-            if(Player2 == null) return;
+            if(player == null) return;
             switch (direction)
             {
                 case Directions.Up:
@@ -162,6 +172,8 @@ namespace BeatMeGameModel.GameModels
             {
                 script.Interpret(time);
             }
+            activeScripts.AddRange(additionalScripts);
+            additionalScripts.Clear();
             CheckPlayerEnemyProjectilesCollision();
             lastAccessTime = time;
         }
@@ -170,13 +182,15 @@ namespace BeatMeGameModel.GameModels
         {
             foreach (var obj in gameObjects)
             {
-                if (!CollideCheck(obj.XPosition - obj.XSize / 2, player.X - PlayerHitBoxSize / 2,
-                        obj.YPosition - obj.YSize / 2, player.Y - PlayerHitBoxSize / 2) || !CollideCheck(
-                        obj.XPosition + obj.XSize / 2, player.X + PlayerHitBoxSize / 2,
-                        obj.YPosition + obj.YSize / 2, player.Y + PlayerHitBoxSize / 2)) continue;
-                inGameTimeStopwatch.Stop();
-                PlayerDeath?.Invoke();
-                return;
+                if (CollideCheck(obj.XPosition - obj.XSize / 2, player.X - PlayerHitBoxSize / 2,
+                        obj.XPosition + obj.XSize / 2, player.X + PlayerHitBoxSize / 2) && CollideCheck(
+                        obj.YPosition - obj.XSize / 2, player.Y - PlayerHitBoxSize / 2,
+                        obj.YPosition + obj.YSize / 2, player.Y + PlayerHitBoxSize / 2))
+                {
+                    inGameTimeStopwatch.Stop();
+                    PlayerDeath?.Invoke();
+                    return;
+                }
             }
         }
 

@@ -56,7 +56,7 @@ namespace BeatMeGameModel.EitorModels
         public void StopPlayTest()
         {
             if(engine == null) return;
-            engine.Pause();
+            engine.Stop();
             WorkTread.OutputDevice.Pause();
             engine = null;
             WorkTread.ChangePlayingPosition(CurrentSecond);

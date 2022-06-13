@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BeatMeGameModel;
+using BeatMeGameModel.IOWorkers;
 
 namespace BeatMeGame.GameView
 {
@@ -18,12 +20,26 @@ namespace BeatMeGame.GameView
             {
                 Directory.CreateDirectory(path);
             }
+
             foreach (var file in Directory.GetFiles(path, "*.png", SearchOption.AllDirectories))
             {
-                outDictionary[file.Split('\\').Last().Split('.').First()] = new Bitmap(file);
+                using (var bmpFromFile = (Bitmap)Image.FromFile(file))
+                {
+                    outDictionary[file.Split('\\').Last().Split('.').First()] = new Bitmap(bmpFromFile);
+                }
             }
 
             return outDictionary;
+        }
+
+        public static void PackBitmapDictionary(Dictionary<string, Bitmap> bitmaps, LevelSave save)
+        {
+            var path = $"Levels\\{save.LevelName}\\Assets\\";
+            LevelFolderWorker.ClearLevelFolder($"{save.LevelName}\\Assets");
+            foreach (var key in bitmaps.Keys)
+            {
+                bitmaps[key].Save(path + key + ".png");
+            }
         }
     }
 }

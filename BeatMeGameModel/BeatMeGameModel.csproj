@@ -110,6 +110,7 @@
   <ItemGroup>
     <Compile Include="Attributes\VariableAttribute.cs" />
     <Compile Include="Exceptions\BracketException.cs" />
+    <Compile Include="Exceptions\DeathException.cs" />
     <Compile Include="Exceptions\InterpretException.cs" />
     <Compile Include="Exceptions\InvalidCommandException.cs" />
     <Compile Include="Exceptions\ProgramBlockException.cs" />

@@ -128,12 +128,19 @@ namespace BeatMeGameModel.GameModels
                 {
                     invoker?.Resume(executionTime);
                     IsEnded = true;
-                    TargetObject.DecreaseReferenceCount();
+                    TargetObject?.DecreaseReferenceCount();
                     return;
                 }
 
-                var currentCommand = extractedCommands[commandPointerPosition].RemoveSplitters()
-                    .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                var command = extractedCommands[commandPointerPosition].RemoveSplitters()
+                    .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                if (command.Length == 0)
+                {
+                    commandPointerPosition++;
+                    continue;
+                }
+
+                var currentCommand = command[0];
 
                 if (currentCommand.Contains('='))
                 {
@@ -475,7 +482,7 @@ namespace BeatMeGameModel.GameModels
             var indexEntry = rawString.IndexOf(entry, 0, StringComparison.InvariantCulture);
             while (indexEntry != -1)
             {
-                rawString = rawString.Replace(entry, toReplace.ToString());
+                rawString = rawString.Replace(entry, toReplace.ToString(CultureInfo.InvariantCulture));
                 indexEntry = rawString.IndexOf(entry, 0, StringComparison.InvariantCulture);
             }
 
