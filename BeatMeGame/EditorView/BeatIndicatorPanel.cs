@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -42,6 +43,8 @@ namespace BeatMeGame.EditorView
         protected override void OnPaint(PaintEventArgs e)
         {
             var graphics = e.Graphics;
+            graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+            graphics.CompositingQuality = CompositingQuality.HighQuality;
             graphics.DrawImage(currentBitmap, new Rectangle(0, 0, this.Width, Height));
             base.OnPaint(e);
         }

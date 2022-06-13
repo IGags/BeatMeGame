@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using BeatMeGame.MenuView;
 using BeatMeGameModel;
-using BeatMeGameModel.MenuBGModels;
+using BeatMeGameModel.IOWorkers;
 using SoundEngineLibrary;
 
 namespace BeatMeGame.MenuBGWrappers

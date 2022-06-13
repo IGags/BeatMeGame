@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using SoundEngineLibrary;
 
-namespace BeatMeGameModel.EditorModels
+namespace BeatMeGameModel.EitorModels
 {
     public class FFTTread
     {

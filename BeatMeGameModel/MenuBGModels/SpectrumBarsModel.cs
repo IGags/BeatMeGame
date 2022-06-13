@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace BeatMeGameModel.MenuBGModels
+namespace BeatMeGameModel.IOWorkers
 {
     public class SpectrumBarsModel
     {

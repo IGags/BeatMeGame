@@ -13,7 +13,8 @@ namespace BeatMeGameModel.IOWorkers
         {
             var manifestString = string.Join("\n", saveData.Manifest.SongName, 
                 BeatDetectionTypeExtensions.ToString(saveData.Manifest.DetectionType), 
-                saveData.Manifest.StartSecond.ToString());
+                saveData.Manifest.StartSecond.ToString(), 
+                EditorTypeExtensions.PackEditorType(saveData.Manifest.EditorType));
             var beatString = string.Join("\n", PackBeatVertices(saveData.Beat));
             LevelFolderWorker.SaveFile(saveData.LevelName, "manifest.txt", manifestString);
             LevelFolderWorker.SaveFile(saveData.LevelName, "beat.txt", beatString);

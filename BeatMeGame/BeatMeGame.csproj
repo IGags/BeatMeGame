@@ -82,8 +82,36 @@
     <Compile Include="EditorView\BeatIndicatorPanel.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="GameView\BitmapCroper.cs" />
+    <Compile Include="GameView\BitmapIOParser.cs" />
+    <Compile Include="GameView\GameStateRenderer.cs" />
+    <Compile Include="GameView\GameWrapper.cs" />
+    <Compile Include="LevelEditorView\AssetList.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="LevelEditorView\BitmapVisualizationPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="LevelEditorView\CodeEditorPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="EditorView\EditorDialogForm.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="LevelEditorView\ColorButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="LevelEditorView\EditorExceptionDialogForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="LevelEditorView\PaintPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="LevelEditorView\ScriptCreationDialogForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="LevelEditorView\ScriptsPanel.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="EditorView\EditorExitDialogForm.cs">
       <SubType>Form</SubType>
@@ -91,7 +119,13 @@
     <Compile Include="EditorView\EditorLoadingForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="LevelEditorView\EditorSettingsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="EditorView\MainEditorFormManager.cs" />
+    <Compile Include="LevelEditorView\MainLevelEditorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="EditorView\MusicEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -114,6 +148,9 @@
     <Compile Include="Interfaces\ISoundProvider.cs" />
     <Compile Include="Interfaces\IStateEditor.cs" />
     <Compile Include="Interfaces\ITerminatable.cs" />
+    <Compile Include="LevelEditorView\GamePlayTestPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="MenuView\LevelCreationDialogForm.cs">
       <SubType>Form</SubType>
     </Compile>

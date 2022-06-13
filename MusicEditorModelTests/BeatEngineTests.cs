@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using BeatMeGameModel;
 using BeatMeGameModel.BeatVertexes;
-using BeatMeGameModel.EditorModels;
+using BeatMeGameModel.EitorModels;
 using BeatMeGameModel.IOWorkers;
 using NUnit.Framework;
 using SoundEngineLibrary;

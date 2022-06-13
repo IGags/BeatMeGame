@@ -74,11 +74,12 @@ namespace BeatMeGameModel.IOWorkers
             if (!isRead && type == LaunchType.Game) return null;
             if (!isRead) return RebuildManifest(levelName);
             var config = rawManifest.Split('\n');
-            if (config.Length != 3) return RebuildManifest(levelName);
+            if (config.Length != 4) return RebuildManifest(levelName);
             return !LevelFolderWorker.CheckFileExist(levelName, config[0]) 
                    | !config[1].TryParseBeatDetectionType(out var beatType) 
                    | !int.TryParse(config[2], out var startSecond)
-                ? new ManifestData() : new ManifestData(config[0], beatType, startSecond);
+                   | !config[3].TryParseEditorType(out var editorType)
+                ? new ManifestData() : new ManifestData(config[0], beatType, startSecond, editorType);
         }
 
         private static ManifestData RebuildManifest(string path)

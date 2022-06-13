@@ -7,7 +7,7 @@ using SoundEngineLibrary;
 using BeatMeGameModel.BeatVertexes;
 using BeatMeGameModel.IOWorkers;
 
-namespace BeatMeGameModel.EditorModels
+namespace BeatMeGameModel.EitorModels
 {
     public enum PackingDirection
     {
@@ -56,7 +56,7 @@ namespace BeatMeGameModel.EditorModels
         public void StopPlayTest()
         {
             if(engine == null) return;
-            engine.Pause();
+            engine.Stop();
             WorkTread.OutputDevice.Pause();
             engine = null;
             WorkTread.ChangePlayingPosition(CurrentSecond);

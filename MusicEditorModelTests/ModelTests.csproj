@@ -56,6 +56,7 @@
     <Compile Include="BeatEngineTests.cs" />
     <Compile Include="PolarVectorTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ScriptParserTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

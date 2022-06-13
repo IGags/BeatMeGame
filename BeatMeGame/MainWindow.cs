@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using BeatMeGame.EditorView;
 using BeatMeGame.MenuView;
@@ -100,6 +102,8 @@ namespace BeatMeGame
             sfxEngine.ChangeEngineVolume(settingsConfig.SfxVolume, 100);
             IsMdiContainer = true;
             Text = "BeatMeGame";
+            AutoScroll = false;
+
 
             Load += (sender, args) => { OnSizeChanged(args); };
 
